@@ -1,6 +1,10 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
+import Layout from './components/Layout';
+import Offers from './pages/Offers';
+import Requests from './pages/Requests';
+import Matches from './pages/Matches';
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children }) => {
@@ -32,14 +36,17 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route 
-            path="/" 
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } 
-          />
+          
+          <Route element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/offers" element={<Offers />} />
+            <Route path="/requests" element={<Requests />} />
+            <Route path="/matches" element={<Matches />} />
+          </Route>
         </Routes>
       </Router>
     </AuthProvider>
