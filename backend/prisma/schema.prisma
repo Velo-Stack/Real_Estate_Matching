@@ -1,0 +1,110 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  BROKER
+}
+
+enum ListingType {
+  SALE
+  RENT
+}
+
+enum PropertyType {
+  APARTMENT
+  VILLA
+  OFFICE
+  LAND
+  SHOP
+  WAREHOUSE
+}
+
+enum MatchStatus {
+  NEW
+  CONTACTED
+  NEGOTIATION
+  CLOSED
+  REJECTED
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String
+  password  String
+  role      Role     @default(BROKER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  offers    Offer[]
+  requests  Request[]
+}
+
+model Offer {
+  id            Int          @id @default(autoincrement())
+  title         String
+  description   String?
+  price         Decimal      @db.Decimal(15, 2)
+  area          Float
+  location      String
+  type          ListingType
+  propertyType  PropertyType
+  rooms         Int?
+  bathrooms     Int?
+  
+  userId        Int
+  user          User         @relation(fields: [userId], references: [id])
+
+  matches       Match[]
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model Request {
+  id            Int          @id @default(autoincrement())
+  clientName    String
+  minPrice      Decimal      @db.Decimal(15, 2)
+  maxPrice      Decimal      @db.Decimal(15, 2)
+  minArea       Float
+  maxArea       Float
+  location      String       // Comma separated or City ID
+  type          ListingType
+  propertyType  PropertyType
+  rooms         Int?
+  bathrooms     Int?
+
+  userId        Int
+  user          User         @relation(fields: [userId], references: [id])
+
+  matches       Match[]
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model Match {
+  id        Int         @id @default(autoincrement())
+  offerId   Int
+  requestId Int
+  score     Float       // Similarity score (0-100)
+  status    MatchStatus @default(NEW)
+  
+  offer     Offer       @relation(fields: [offerId], references: [id])
+  request   Request     @relation(fields: [requestId], references: [id])
+
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([offerId, requestId]) // Prevent validation duplicates
+}
