@@ -1,32 +1,47 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
+// Enums
 enum Role {
   ADMIN
   MANAGER
   BROKER
 }
 
-enum ListingType {
-  SALE
-  RENT
+enum PropertyType {
+  LAND
+  PROJECT
+  PLAN
 }
 
-enum PropertyType {
-  APARTMENT
-  VILLA
-  OFFICE
-  LAND
-  SHOP
-  WAREHOUSE
+enum UsageType {
+  RESIDENTIAL
+  COMMERCIAL
+  ADMINISTRATIVE
+  INDUSTRIAL
+  AGRICULTURAL
+}
+
+enum LandStatus {
+  RAW
+  DEVELOPED
+}
+
+enum ExclusivityType {
+  EXCLUSIVE
+  NON_EXCLUSIVE
+}
+
+enum PriorityType {
+  HIGH
+  MEDIUM
+  LOW
 }
 
 enum MatchStatus {
@@ -37,74 +52,114 @@ enum MatchStatus {
   REJECTED
 }
 
+enum NotificationStatus {
+  UNREAD
+  READ
+  ARCHIVED
+}
+
+// Models
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
   name      String
   password  String
   role      Role     @default(BROKER)
+  
+  createdOffers   Offer[]
+  createdRequests Request[]
+  notifications   Notification[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  offers    Offer[]
-  requests  Request[]
 }
 
 model Offer {
-  id            Int          @id @default(autoincrement())
-  title         String
-  description   String?
-  price         Decimal      @db.Decimal(15, 2)
-  area          Float
-  location      String
-  type          ListingType
-  propertyType  PropertyType
-  rooms         Int?
-  bathrooms     Int?
+  id            Int             @id @default(autoincrement())
   
-  userId        Int
-  user          User         @relation(fields: [userId], references: [id])
+  // Mandatory Fields
+  type          PropertyType
+  usage         UsageType
+  landStatus    LandStatus
+  city          String
+  district      String
+  
+  areaFrom      Float
+  areaTo        Float
+  priceFrom     Decimal         @db.Decimal(15, 2)
+  priceTo       Decimal         @db.Decimal(15, 2)
+  exclusivity   ExclusivityType
 
+  // Optional Fields
+  coordinates   String?
+  description   String?
+
+  // Relations
+  createdById   Int
+  createdBy     User            @relation(fields: [createdById], references: [id])
+  
   matches       Match[]
 
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 }
 
 model Request {
-  id            Int          @id @default(autoincrement())
-  clientName    String
-  minPrice      Decimal      @db.Decimal(15, 2)
-  maxPrice      Decimal      @db.Decimal(15, 2)
-  minArea       Float
-  maxArea       Float
-  location      String       // Comma separated or City ID
-  type          ListingType
-  propertyType  PropertyType
-  rooms         Int?
-  bathrooms     Int?
+  id            Int             @id @default(autoincrement())
 
-  userId        Int
-  user          User         @relation(fields: [userId], references: [id])
+  // Mandatory Fields
+  type          PropertyType
+  usage         UsageType
+  landStatus    LandStatus
+  city          String
+  district      String
+  
+  areaFrom      Float
+  areaTo        Float
+  budgetFrom    Decimal         @db.Decimal(15, 2)
+  budgetTo      Decimal         @db.Decimal(15, 2)
+  priority      PriorityType
+
+  // Relations
+  createdById   Int
+  createdBy     User            @relation(fields: [createdById], references: [id])
 
   matches       Match[]
 
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 }
 
 model Match {
   id        Int         @id @default(autoincrement())
+  
   offerId   Int
   requestId Int
-  score     Float       // Similarity score (0-100)
-  status    MatchStatus @default(NEW)
   
   offer     Offer       @relation(fields: [offerId], references: [id])
   request   Request     @relation(fields: [requestId], references: [id])
+  
+  score     Float       // 0-100
+  status    MatchStatus @default(NEW)
+  
+  notifications Notification[] // A match can generate notifications
 
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
-  @@unique([offerId, requestId]) // Prevent validation duplicates
+  @@unique([offerId, requestId])
+}
+
+model Notification {
+  id        Int                @id @default(autoincrement())
+  
+  userId    Int
+  user      User               @relation(fields: [userId], references: [id])
+  
+  matchId   Int
+  match     Match              @relation(fields: [matchId], references: [id])
+  
+  status    NotificationStatus @default(UNREAD)
+  
+  createdAt DateTime           @default(now())
 }

@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpecs = require('./config/swagger');
 
 const app = express();
 
@@ -16,6 +18,9 @@ app.use(express.urlencoded({ extended: false }));
 app.get('/', (req, res) => {
   res.json({ message: 'Real Estate Matching API is running...' });
 });
+
+// Swagger
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api', require('./routes/api.routes'));
