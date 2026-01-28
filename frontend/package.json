@@ -9,6 +9,9 @@
     "lint": "eslint .",
     "preview": "vite preview"
   },
+  "prisma": {
+    "seed": "node prisma/seeds.js"
+  },
   "dependencies": {
     "axios": "^1.13.3",
     "phosphor-react": "^1.4.1",
