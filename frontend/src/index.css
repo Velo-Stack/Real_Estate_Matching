@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 :root {
   direction: rtl;
   --primary-color: #2563eb;
