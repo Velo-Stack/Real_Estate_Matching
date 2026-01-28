@@ -90,6 +90,9 @@ const updateOffer = async (req, res) => {
       return res.status(403).json({ message: 'You can only update your own offers' });
     }
 
+    // Store old data for audit
+    req.oldData = offer;
+
     const updated = await prisma.offer.update({
       where: { id: parseInt(id) },
       data: req.body
@@ -111,6 +114,9 @@ const deleteOffer = async (req, res) => {
     if (role === 'BROKER' && offer.createdById !== userId) {
       return res.status(403).json({ message: 'You can only delete your own offers' });
     }
+
+    // Store old data for audit
+    req.oldData = offer;
 
     await prisma.offer.delete({ where: { id: parseInt(id) } });
     res.json({ message: 'Offer deleted' });

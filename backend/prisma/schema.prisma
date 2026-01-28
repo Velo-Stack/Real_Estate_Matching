@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // Enums
@@ -58,6 +57,12 @@ enum NotificationStatus {
   ARCHIVED
 }
 
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
 // Models
 model User {
   id        Int      @id @default(autoincrement())
@@ -69,6 +74,7 @@ model User {
   createdOffers   Offer[]
   createdRequests Request[]
   notifications   Notification[]
+  auditLogs       AuditLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -162,4 +168,23 @@ model Notification {
   status    NotificationStatus @default(UNREAD)
   
   createdAt DateTime           @default(now())
+}
+
+model AuditLog {
+  id          Int         @id @default(autoincrement())
+  
+  userId      Int
+  user        User        @relation(fields: [userId], references: [id])
+  
+  action      AuditAction
+  resource    String      // "Offer", "Request", "User", etc.
+  resourceId  Int?        // ID of the affected resource
+  
+  oldValues   Json?       // Previous state (for UPDATE/DELETE)
+  newValues   Json?       // New state (for CREATE/UPDATE)
+  
+  ipAddress   String?
+  userAgent   String?
+  
+  createdAt   DateTime    @default(now())
 }

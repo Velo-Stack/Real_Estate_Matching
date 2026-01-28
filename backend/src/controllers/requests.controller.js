@@ -75,6 +75,9 @@ const updateRequest = async (req, res) => {
       return res.status(403).json({ message: 'You can only update your own requests' });
     }
 
+    // Store old data for audit
+    req.oldData = request;
+
     const updated = await prisma.request.update({
       where: { id: parseInt(id) },
       data: req.body
@@ -96,6 +99,9 @@ const deleteRequest = async (req, res) => {
     if (role === 'BROKER' && request.createdById !== userId) {
       return res.status(403).json({ message: 'You can only delete your own requests' });
     }
+
+    // Store old data for audit
+    req.oldData = request;
 
     await prisma.request.delete({ where: { id: parseInt(id) } });
     res.json({ message: 'Request deleted' });

@@ -137,6 +137,25 @@ const matchOfferToRequests = async (offer) => {
           { userId: match.requestOwnerId, matchId: created.id, status: 'UNREAD' }
         ]
       });
+
+      // ✨ Emit Realtime Notification via Socket.IO
+      if (global.io) {
+        // Notify Offer Owner
+        global.io.to(`user-${offer.createdById}`).emit('new-match', {
+          matchId: created.id,
+          message: 'New match found for your offer!',
+          score: created.score,
+          type: 'offer'
+        });
+        
+        // Notify Request Owner
+        global.io.to(`user-${match.requestOwnerId}`).emit('new-match', {
+          matchId: created.id,
+          message: 'New match found for your request!',
+          score: created.score,
+          type: 'request'
+        });
+      }
     }
   }
   
@@ -179,6 +198,23 @@ const matchRequestToOffers = async (request) => {
             { userId: request.createdById, matchId: created.id, status: 'UNREAD' }
           ]
         });
+
+        // ✨ Emit Realtime Notification via Socket.IO
+        if (global.io) {
+          global.io.to(`user-${offer.createdById}`).emit('new-match', {
+            matchId: created.id,
+            message: 'New match found for your offer!',
+            score: created.score,
+            type: 'offer'
+          });
+          
+          global.io.to(`user-${request.createdById}`).emit('new-match', {
+            matchId: created.id,
+            message: 'New match found for your request!',
+            score: created.score,
+            type: 'request'
+          });
+        }
       }
     }
   }

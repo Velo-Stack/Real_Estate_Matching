@@ -17,13 +17,19 @@ const io = new Server(server, {
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
   
+  // Join user-specific room
+  socket.on('join', (userId) => {
+    socket.join(`user-${userId}`);
+    console.log(`User ${userId} joined their room`);
+  });
+  
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
   });
 });
 
-// Make io accessible globally or pass it to routes
-app.set('io', io);
+// Make io accessible globally
+global.io = io;
 
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
