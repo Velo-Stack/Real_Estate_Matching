@@ -1,6 +1,12 @@
 -- Drop old enums and recreate with new values
 DROP TYPE IF EXISTS "ListingType" CASCADE;
 DROP TYPE IF EXISTS "PropertyType" CASCADE;
+DROP TYPE IF EXISTS "UsageType" CASCADE;
+DROP TYPE IF EXISTS "LandStatus" CASCADE;
+DROP TYPE IF EXISTS "ExclusivityType" CASCADE;
+DROP TYPE IF EXISTS "PriorityType" CASCADE;
+DROP TYPE IF EXISTS "NotificationStatus" CASCADE;
+DROP TYPE IF EXISTS "AuditAction" CASCADE;
 
 -- Create new enums
 CREATE TYPE "PropertyType" AS ENUM ('LAND', 'PROJECT', 'PLAN');
@@ -31,6 +37,7 @@ CREATE TABLE "Offer" (
     "exclusivity" "ExclusivityType" NOT NULL,
     "coordinates" TEXT,
     "description" TEXT,
+    "title" TEXT,
     "createdById" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,

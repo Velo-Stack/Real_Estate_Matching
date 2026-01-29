@@ -9,12 +9,29 @@ const createRequest = async (req, res) => {
       priority 
     } = req.body;
 
+    // Validate required fields
+    if (!type || !usage || !landStatus || !city || !district || 
+        areaFrom === undefined || areaTo === undefined || 
+        budgetFrom === undefined || budgetTo === undefined || !priority) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    // Validate user exists
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
+
     const data = {
-      type, usage, landStatus, city, district,
+      type,
+      usage,
+      landStatus,
+      city,
+      district,
       areaFrom: parseFloat(areaFrom),
       areaTo: parseFloat(areaTo),
-      budgetFrom: parseFloat(budgetFrom),
-      budgetTo: parseFloat(budgetTo),
+      budgetFrom: parseFloat(budgetFrom) || 0,
+      budgetTo: parseFloat(budgetTo) || 0,
       priority,
       createdById: req.user.id
     };

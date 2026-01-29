@@ -9,7 +9,7 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  const hashedPassword = await bcrypt.hash('123456', 10);
+  const hashedPassword = await bcrypt.hash('password123', 10);
 
   // Admin User
   const admin = await prisma.user.upsert({
@@ -35,7 +35,78 @@ async function main() {
     },
   });
 
-  console.log({ admin, broker });
+  // Create sample Offers
+  const offer1 = await prisma.offer.create({
+    data: {
+      type: 'LAND',
+      usage: 'RESIDENTIAL',
+      landStatus: 'RAW',
+      city: 'الرياض',
+      district: 'الدرعية',
+      areaFrom: 500,
+      areaTo: 1000,
+      priceFrom: 500000,
+      priceTo: 1000000,
+      exclusivity: 'EXCLUSIVE',
+      description: 'أرض سكنية بموقع ممتاز',
+      createdById: broker.id
+    }
+  });
+
+  const offer2 = await prisma.offer.create({
+    data: {
+      type: 'PROJECT',
+      usage: 'RESIDENTIAL',
+      landStatus: 'DEVELOPED',
+      city: 'جدة',
+      district: 'الشاطئ',
+      areaFrom: 1000,
+      areaTo: 2000,
+      priceFrom: 2000000,
+      priceTo: 5000000,
+      exclusivity: 'NON_EXCLUSIVE',
+      description: 'مشروع سكني حديث',
+      createdById: broker.id
+    }
+  });
+
+  // Create sample Requests
+  const request1 = await prisma.request.create({
+    data: {
+      type: 'LAND',
+      usage: 'RESIDENTIAL',
+      landStatus: 'RAW',
+      city: 'الرياض',
+      district: 'الدرعية',
+      areaFrom: 500,
+      areaTo: 1500,
+      budgetFrom: 400000,
+      budgetTo: 1500000,
+      priority: 'HIGH',
+      createdById: broker.id
+    }
+  });
+
+  // Create sample Match
+  const match = await prisma.match.create({
+    data: {
+      offerId: offer1.id,
+      requestId: request1.id,
+      score: 0.95,
+      status: 'NEW'
+    }
+  });
+
+  // Create sample Notification
+  await prisma.notification.create({
+    data: {
+      userId: broker.id,
+      matchId: match.id,
+      status: 'UNREAD'
+    }
+  });
+
+  console.log({ admin, broker, offer1, offer2, request1, match });
 }
 
 main()
