@@ -17,7 +17,7 @@ CREATE TYPE "TeamType" AS ENUM ('LANDS', 'PROPERTIES', 'MAINTENANCE', 'RENTAL', 
 CREATE TYPE "TeamRole" AS ENUM ('MANAGER', 'MEMBER');
 
 -- AlterTable
-ALTER TABLE "Offer" DROP COLUMN "title",
+ALTER TABLE "Offer" DROP COLUMN IF EXISTS "title",
 ADD COLUMN     "brokersCount" INTEGER,
 ADD COLUMN     "cityId" INTEGER,
 ADD COLUMN     "contractType" "ContractType",
