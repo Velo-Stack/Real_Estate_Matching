@@ -3,15 +3,14 @@ const { matchRequestToOffers } = require('../services/matching.service');
 
 const createRequest = async (req, res) => {
   try {
-    const { 
-      type, usage, landStatus, city, district, 
-      areaFrom, areaTo, budgetFrom, budgetTo, 
-      priority 
+    const {
+      type, usage, purpose, landStatus, city, district, cityId, neighborhoodId,
+      areaFrom, areaTo, budgetFrom, budgetTo,
+      priority
     } = req.body;
 
-    // Validate required fields
-    if (!type || !usage || !landStatus || !city || !district || 
-        areaFrom === undefined || areaTo === undefined || 
+    // Basic validation: keep numeric ranges mandatory
+    if (!type || !usage || areaFrom === undefined || areaTo === undefined ||
         budgetFrom === undefined || budgetTo === undefined || !priority) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
@@ -25,9 +24,12 @@ const createRequest = async (req, res) => {
     const data = {
       type,
       usage,
-      landStatus,
-      city,
-      district,
+      purpose: purpose || null,
+      landStatus: landStatus || null,
+      city: city || null,
+      district: district || null,
+      cityId: cityId ? parseInt(cityId) : null,
+      neighborhoodId: neighborhoodId ? parseInt(neighborhoodId) : null,
       areaFrom: parseFloat(areaFrom),
       areaTo: parseFloat(areaTo),
       budgetFrom: parseFloat(budgetFrom) || 0,
@@ -50,13 +52,16 @@ const createRequest = async (req, res) => {
 const getRequests = async (req, res) => {
   try {
     // Visibility: All visible
-    const { type, usage, city, district, minBudget, maxBudget, minArea, maxArea, priority } = req.query;
+    const { type, usage, purpose, city, district, minBudget, maxBudget, minArea, maxArea, priority, cityId, neighborhoodId } = req.query;
     const where = {};
 
     if (type) where.type = type;
     if (usage) where.usage = usage;
+    if (purpose) where.purpose = purpose;
     if (city) where.city = { contains: city, mode: 'insensitive' };
     if (priority) where.priority = priority;
+    if (cityId) where.cityId = parseInt(cityId);
+    if (neighborhoodId) where.neighborhoodId = parseInt(neighborhoodId);
     
     // Budget Overlap: budgetTo >= minQuery AND budgetFrom <= maxQuery
     if (minBudget) where.budgetTo = { gte: parseFloat(minBudget) };
@@ -69,9 +74,9 @@ const getRequests = async (req, res) => {
       where,
       orderBy: { createdAt: 'desc' },
       include: { 
-        createdBy: { 
-          select: { id: true, name: true, role: true } 
-        } 
+        createdBy: { select: { id: true, name: true, role: true } },
+        cityRel: { select: { id: true, name: true } },
+        neighborhoodRel: { select: { id: true, name: true, cityId: true } }
       }
     });
     res.json(requests);

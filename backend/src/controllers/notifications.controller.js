@@ -11,6 +11,9 @@ const getNotifications = async (req, res) => {
             offer: { select: { id: true, type: true, city: true, priceFrom: true, priceTo: true } },
             request: { select: { id: true, type: true, city: true, budgetFrom: true, budgetTo: true } }
           }
+        },
+        conversation: {
+          select: { id: true, title: true }
         }
       }
     });

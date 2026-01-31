@@ -37,6 +37,18 @@ enum ExclusivityType {
   NON_EXCLUSIVE
 }
 
+enum PurposeType {
+  SALE
+  RENT
+  PARTNERSHIP
+  INVESTMENT
+}
+
+enum ContractType {
+  WITH_MEDIATION_CONTRACT
+  WITHOUT_MEDIATION_CONTRACT
+}
+
 enum PriorityType {
   HIGH
   MEDIUM
@@ -57,6 +69,12 @@ enum NotificationStatus {
   ARCHIVED
 }
 
+enum NotificationType {
+  MATCH
+  MESSAGE
+  SYSTEM
+}
+
 enum AuditAction {
   CREATE
   UPDATE
@@ -65,126 +83,234 @@ enum AuditAction {
 
 // Models
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  name      String
-  password  String
-  role      Role     @default(BROKER)
-  
-  createdOffers   Offer[]
-  createdRequests Request[]
-  notifications   Notification[]
-  auditLogs       AuditLog[]
+  id       Int    @id @default(autoincrement())
+  email    String @unique
+  name     String
+  password String
+  role     Role   @default(BROKER)
+
+  createdOffers            Offer[]
+  createdRequests          Request[]
+  notifications            Notification[]
+  auditLogs                AuditLog[]
+  teamMemberships          TeamMember[]
+  conversationParticipants ConversationParticipant[]
+  messagesSent             Message[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Offer {
-  id            Int             @id @default(autoincrement())
-  
-  // Mandatory Fields
-  type          PropertyType
-  usage         UsageType
-  landStatus    LandStatus
-  city          String
-  district      String
-  
-  areaFrom      Float
-  areaTo        Float
-  priceFrom     Decimal         @db.Decimal(15, 2)
-  priceTo       Decimal         @db.Decimal(15, 2)
-  exclusivity   ExclusivityType
+  id Int @id @default(autoincrement())
+
+  // Mandatory/Optional Fields
+  type           PropertyType
+  usage          UsageType
+  landStatus     LandStatus? // made optional per request
+  city           String?
+  district       String?
+  cityId         Int?
+  neighborhoodId Int?
+  purpose        PurposeType?
+  brokersCount   Int?
+
+  areaFrom     Float
+  areaTo       Float
+  priceFrom    Decimal         @db.Decimal(15, 2)
+  priceTo      Decimal         @db.Decimal(15, 2)
+  exclusivity  ExclusivityType
+  contractType ContractType? // new field for 'طبيعة التعاقد'
 
   // Optional Fields
-  coordinates   String?
-  description   String?
+  coordinates String?
+  description String?
 
   // Relations
-  createdById   Int
-  createdBy     User            @relation(fields: [createdById], references: [id])
-  
-  matches       Match[]
+  createdById Int
+  createdBy   User @relation(fields: [createdById], references: [id])
 
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  cityRel         City?         @relation(fields: [cityId], references: [id])
+  neighborhoodRel Neighborhood? @relation(fields: [neighborhoodId], references: [id])
+  matches         Match[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Request {
-  id            Int             @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  // Mandatory Fields
-  type          PropertyType
-  usage         UsageType
-  landStatus    LandStatus
-  city          String
-  district      String
-  
-  areaFrom      Float
-  areaTo        Float
-  budgetFrom    Decimal         @db.Decimal(15, 2)
-  budgetTo      Decimal         @db.Decimal(15, 2)
-  priority      PriorityType
+  // Mandatory/Optional Fields
+  type           PropertyType
+  usage          UsageType
+  purpose        PurposeType? // added to support matching by purpose
+  landStatus     LandStatus? // made optional
+  city           String?
+  district       String?
+  cityId         Int?
+  neighborhoodId Int?
+
+  areaFrom   Float
+  areaTo     Float
+  budgetFrom Decimal      @db.Decimal(15, 2)
+  budgetTo   Decimal      @db.Decimal(15, 2)
+  priority   PriorityType
 
   // Relations
-  createdById   Int
-  createdBy     User            @relation(fields: [createdById], references: [id])
+  createdById Int
+  createdBy   User @relation(fields: [createdById], references: [id])
 
-  matches       Match[]
+  cityRel         City?         @relation(fields: [cityId], references: [id])
+  neighborhoodRel Neighborhood? @relation(fields: [neighborhoodId], references: [id])
+  matches         Match[]
 
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Match {
-  id        Int         @id @default(autoincrement())
-  
+  id Int @id @default(autoincrement())
+
   offerId   Int
   requestId Int
-  
-  offer     Offer       @relation(fields: [offerId], references: [id])
-  request   Request     @relation(fields: [requestId], references: [id])
-  
-  score     Float       // 0-100
-  status    MatchStatus @default(NEW)
-  
+
+  offer   Offer   @relation(fields: [offerId], references: [id])
+  request Request @relation(fields: [requestId], references: [id])
+
+  score  Float // 0-100
+  status MatchStatus @default(NEW)
+
   notifications Notification[] // A match can generate notifications
 
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([offerId, requestId])
 }
 
-model Notification {
-  id        Int                @id @default(autoincrement())
-  
+model City {
+  id            Int            @id @default(autoincrement())
+  name          String
+  neighborhoods Neighborhood[]
+  offers        Offer[]
+  requests      Request[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Neighborhood {
+  id        Int       @id @default(autoincrement())
+  name      String
+  cityId    Int
+  city      City      @relation(fields: [cityId], references: [id])
+  offers    Offer[]
+  requests  Request[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+enum TeamType {
+  LANDS
+  PROPERTIES
+  MAINTENANCE
+  RENTAL
+  ASSET_MANAGEMENT
+}
+
+enum TeamRole {
+  MANAGER
+  MEMBER
+}
+
+model Team {
+  id            Int            @id @default(autoincrement())
+  name          String         @unique
+  type          TeamType
+  members       TeamMember[]
+  conversations Conversation[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @default(now()) @updatedAt
+}
+
+model TeamMember {
+  id        Int      @id @default(autoincrement())
+  teamId    Int
+  team      Team     @relation(fields: [teamId], references: [id])
   userId    Int
-  user      User               @relation(fields: [userId], references: [id])
-  
-  matchId   Int
-  match     Match              @relation(fields: [matchId], references: [id])
-  
-  status    NotificationStatus @default(UNREAD)
-  
-  createdAt DateTime           @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  role      TeamRole @default(MEMBER)
+  createdAt DateTime @default(now())
+}
+
+model Conversation {
+  id            Int                       @id @default(autoincrement())
+  title         String?
+  teamId        Int?
+  team          Team?                     @relation(fields: [teamId], references: [id])
+  participants  ConversationParticipant[]
+  messages      Message[]
+  notifications Notification[]
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @default(now()) @updatedAt
+}
+
+model ConversationParticipant {
+  id             Int          @id @default(autoincrement())
+  conversationId Int
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  userId         Int
+  user           User         @relation(fields: [userId], references: [id])
+  createdAt      DateTime     @default(now())
+}
+
+model Message {
+  id             Int          @id @default(autoincrement())
+  conversationId Int
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  senderId       Int
+  sender         User         @relation(fields: [senderId], references: [id])
+  body           String
+  readBy         Json? // array of userIds who read the message
+  createdAt      DateTime     @default(now())
+}
+
+model Notification {
+  id Int @id @default(autoincrement())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  type NotificationType @default(MATCH)
+
+  matchId Int?
+  match   Match? @relation(fields: [matchId], references: [id])
+
+  conversationId Int?
+  conversation   Conversation? @relation(fields: [conversationId], references: [id])
+
+  meta Json? // arbitrary metadata, e.g., message snippet
+
+  status NotificationStatus @default(UNREAD)
+
+  createdAt DateTime @default(now())
 }
 
 model AuditLog {
-  id          Int         @id @default(autoincrement())
-  
-  userId      Int
-  user        User        @relation(fields: [userId], references: [id])
-  
-  action      AuditAction
-  resource    String      // "Offer", "Request", "User", etc.
-  resourceId  Int?        // ID of the affected resource
-  
-  oldValues   Json?       // Previous state (for UPDATE/DELETE)
-  newValues   Json?       // New state (for CREATE/UPDATE)
-  
-  ipAddress   String?
-  userAgent   String?
-  
-  createdAt   DateTime    @default(now())
+  id Int @id @default(autoincrement())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  action     AuditAction
+  resource   String // "Offer", "Request", "User", etc.
+  resourceId Int? // ID of the affected resource
+
+  oldValues Json? // Previous state (for UPDATE/DELETE)
+  newValues Json? // New state (for CREATE/UPDATE)
+
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
 }
