@@ -21,7 +21,9 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.3.0",
     "@prisma/client": "^7.3.0",
+    "arabic-reshaper": "^1.1.0",
     "bcryptjs": "^3.0.3",
+    "bidi-js": "^1.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "exceljs": "^4.4.0",
