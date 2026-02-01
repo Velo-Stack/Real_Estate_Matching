@@ -11,6 +11,8 @@ import Notifications from './pages/Notifications';
 import Users from './pages/Users';
 import AuditLogs from './pages/AuditLogs';
 import Reports from './pages/Reports';
+import Teams from './pages/Teams';
+import Chat from './pages/Chat';
 import NotAuthorized from './pages/NotAuthorized';
 import NotFound from './pages/NotFound';
 
@@ -119,6 +121,22 @@ function App() {
               element={(
                 <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.MANAGER]}>
                   <Reports />
+                </RoleGuard>
+              )}
+            />
+            <Route
+              path="/teams"
+              element={(
+                <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.MANAGER]}>
+                  <Teams />
+                </RoleGuard>
+              )}
+            />
+            <Route
+              path="/chat"
+              element={(
+                <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.MANAGER, ROLES.BROKER]}>
+                  <Chat />
                 </RoleGuard>
               )}
             />

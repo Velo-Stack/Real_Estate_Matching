@@ -1,169 +1,120 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import api from '../utils/api';
-import Table from '../components/Table';
-import Modal from '../components/Modal';
-import { Plus, Trash, PencilSimple, Target, MapPin, Wallet, Flag } from 'phosphor-react';
+import { Target, MapPin, Flag } from 'phosphor-react';
 import { useAuth } from '../context/AuthContext';
 import { canEdit, canDelete } from '../utils/rbac';
+import { useCRUD, useFormModal } from '../hooks';
+import { PageHeader, ActionButtons, CityDistrictSelect } from '../components/common';
+import Table from '../components/Table';
+import Modal from '../components/Modal';
+import {
+  inputClasses,
+  labelClasses,
+  submitButtonClasses,
+} from '../constants/styles';
+import {
+  PROPERTY_TYPE_OPTIONS,
+  USAGE_TYPE_OPTIONS,
+  PURPOSE_OPTIONS,
+  PRIORITY_OPTIONS,
+} from '../constants/enums';
 
+// البيانات الافتراضية
 const emptyRequest = {
-  type: 'Apartment',
-  usage: 'Residential',
-  landStatus: 'Freehold',
+  type: 'LAND',
+  usage: 'RESIDENTIAL',
   city: '',
   district: '',
   areaFrom: '',
   areaTo: '',
   budgetFrom: '',
   budgetTo: '',
-  priority: 'Medium',
+  purpose: '',
+  priority: 'MEDIUM',
 };
 
-// New Emerald theme input classes
-const inputClasses = "w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all duration-300 focus:border-emerald-500/50 focus:bg-white/10 focus:shadow-[0_0_20px_rgba(16,185,129,0.15)]";
-const labelClasses = "block mb-2 text-sm font-medium text-slate-300";
+// تحويل للفورم
+const mapRequestToForm = (req) => ({
+  type: req.type || 'LAND',
+  usage: req.usage || 'RESIDENTIAL',
+  city: req.city || '',
+  district: req.district || '',
+  areaFrom: req.areaFrom ?? '',
+  areaTo: req.areaTo ?? '',
+  budgetFrom: req.budgetFrom ?? '',
+  budgetTo: req.budgetTo ?? '',
+  purpose: req.purpose || '',
+  priority: req.priority || 'MEDIUM',
+});
 
+// Priority config
 const priorityConfig = {
-  High: { label: 'مرتفعة', bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/30' },
-  Medium: { label: 'متوسطة', bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/30' },
-  Low: { label: 'منخفضة', bg: 'bg-slate-500/10', text: 'text-slate-400', border: 'border-slate-500/30' },
+  HIGH: { label: 'مرتفعة', bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/30' },
+  MEDIUM: { label: 'متوسطة', bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/30' },
+  LOW: { label: 'منخفضة', bg: 'bg-slate-500/10', text: 'text-slate-400', border: 'border-slate-500/30' },
 };
 
 const Requests = () => {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingRequest, setEditingRequest] = useState(null);
-  const [formData, setFormData] = useState(emptyRequest);
 
-  const { data: requests = [], isLoading } = useQuery({
-    queryKey: ['requests'],
-    queryFn: async () => {
-      const { data } = await api.get('/requests');
-      return data;
+  // CRUD
+  const {
+    data: requests,
+    isLoading,
+    create,
+    update,
+    remove,
+    isSubmitting,
+  } = useCRUD('requests', {
+    messages: {
+      createSuccess: 'تم إنشاء الطلب بنجاح',
+      updateSuccess: 'تم تحديث الطلب بنجاح',
+      deleteSuccess: 'تم حذف الطلب بنجاح',
     },
   });
 
-  const createRequest = useMutation({
-    mutationFn: async (payload) => {
-      const { data } = await api.post('/requests', payload);
-      return data;
-    },
-    onSuccess: () => {
-      toast.success('تم إنشاء الطلب بنجاح');
-      queryClient.invalidateQueries({ queryKey: ['requests'] });
-    },
-    onError: () => {
-      toast.error('حدث خطأ أثناء إنشاء الطلب');
-    },
-  });
+  // Form & Modal
+  const {
+    isOpen,
+    formData,
+    editingItem,
+    isEditing,
+    openCreate,
+    openEdit,
+    close,
+    handleChange,
+  } = useFormModal(emptyRequest);
 
-  const updateRequest = useMutation({
-    mutationFn: async ({ id, payload }) => {
-      const { data } = await api.put(`/requests/${id}`, payload);
-      return data;
-    },
-    onSuccess: () => {
-      toast.success('تم تحديث الطلب بنجاح');
-      queryClient.invalidateQueries({ queryKey: ['requests'] });
-    },
-    onError: () => {
-      toast.error('حدث خطأ أثناء تحديث الطلب');
-    },
-  });
-
-  const deleteRequest = useMutation({
-    mutationFn: async (id) => {
-      await api.delete(`/requests/${id}`);
-    },
-    onSuccess: () => {
-      toast.success('تم حذف الطلب بنجاح');
-      queryClient.invalidateQueries({ queryKey: ['requests'] });
-    },
-    onError: () => {
-      toast.error('حدث خطأ أثناء حذف الطلب');
-    },
-  });
-
-  const openCreateModal = () => {
-    setEditingRequest(null);
-    setFormData(emptyRequest);
-    setIsModalOpen(true);
+  // حذف
+  const confirmDelete = (req) => {
+    if (!window.confirm('هل أنت متأكد؟')) return;
+    remove(req.id);
   };
 
-  const openEditModal = (request) => {
-    setEditingRequest(request);
-    setFormData({
-      type: request.type || 'Apartment',
-      usage: request.usage || 'Residential',
-      landStatus: request.landStatus || 'Freehold',
-      city: request.city || '',
-      district: request.district || '',
-      areaFrom: request.areaFrom ?? '',
-      areaTo: request.areaTo ?? '',
-      budgetFrom: request.budgetFrom ?? '',
-      budgetTo: request.budgetTo ?? '',
-      priority: request.priority || 'Medium',
-    });
-    setIsModalOpen(true);
-  };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const isSubmitting = createRequest.isPending || updateRequest.isPending;
-
+  // Submit
   const handleSubmit = (e) => {
     e.preventDefault();
     if (isSubmitting) return;
 
-    const areaFromNum = formData.areaFrom ? Number(formData.areaFrom) : null;
-    const areaToNum = formData.areaTo ? Number(formData.areaTo) : null;
-    const budgetFromNum = formData.budgetFrom ? Number(formData.budgetFrom) : null;
-    const budgetToNum = formData.budgetTo ? Number(formData.budgetTo) : null;
-
-    if (areaFromNum !== null && areaToNum !== null && areaFromNum > areaToNum) {
-      toast.error('مساحة "من" يجب أن تكون أقل من أو تساوي مساحة "إلى".');
-      return;
-    }
-    if (budgetFromNum !== null && budgetToNum !== null && budgetFromNum > budgetToNum) {
-      toast.error('الميزانية "من" يجب أن تكون أقل من أو تساوي الميزانية "إلى".');
-      return;
-    }
-
     const payload = {
       ...formData,
-      areaFrom: areaFromNum,
-      areaTo: areaToNum,
-      budgetFrom: budgetFromNum,
-      budgetTo: budgetToNum,
+      areaFrom: formData.areaFrom ? Number(formData.areaFrom) : null,
+      areaTo: formData.areaTo ? Number(formData.areaTo) : null,
+      budgetFrom: formData.budgetFrom ? Number(formData.budgetFrom) : null,
+      budgetTo: formData.budgetTo ? Number(formData.budgetTo) : null,
     };
 
-    if (editingRequest) {
-      updateRequest.mutate({ id: editingRequest.id, payload });
+    if (isEditing) {
+      update({ id: editingItem.id, payload });
     } else {
-      createRequest.mutate(payload);
+      create(payload);
     }
-
-    setIsModalOpen(false);
+    close();
   };
 
-  const confirmDelete = (request) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذا الطلب؟')) return;
-    deleteRequest.mutate(request.id);
-  };
-
+  // أعمدة الجدول
   const columns = [
     {
-      header: 'نوع العقار',
+      header: 'النوع',
       key: 'type',
       render: (row) => (
         <div className="flex items-center gap-2">
@@ -186,7 +137,7 @@ const Requests = () => {
       )
     },
     {
-      header: 'المساحة (م²)',
+      header: 'المساحة',
       key: 'area',
       render: (row) => (
         <span className="text-emerald-400 font-medium">
@@ -195,7 +146,7 @@ const Requests = () => {
       ),
     },
     {
-      header: 'الميزانية (ج.م)',
+      header: 'الميزانية',
       key: 'budget',
       render: (row) => (
         <span className="text-cyan-400 font-medium">
@@ -207,208 +158,120 @@ const Requests = () => {
       header: 'الأولوية',
       key: 'priority',
       render: (row) => {
-        const config = priorityConfig[row.priority] || priorityConfig.Medium;
+        const cfg = priorityConfig[row.priority] || priorityConfig.MEDIUM;
         return (
-          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium ${config.bg} ${config.text} border ${config.border}`}>
+          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium ${cfg.bg} ${cfg.text} border ${cfg.border}`}>
             <Flag size={12} weight="fill" />
-            {config.label}
+            {cfg.label}
           </span>
         );
       }
     },
   ];
 
-  const actions = (request) => {
-    const canEditRequest = canEdit(request, user);
-    const canDeleteRequest = canDelete(request, user);
-
-    if (!canEditRequest && !canDeleteRequest) return null;
+  // Actions
+  const actions = (req) => {
+    const canEditReq = canEdit(req, user);
+    const canDeleteReq = canDelete(req, user);
+    if (!canEditReq && !canDeleteReq) return null;
 
     return (
-      <div className="flex gap-2">
-        {canEditRequest && (
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            type="button"
-            onClick={() => openEditModal(request)}
-            className="inline-flex items-center gap-1 text-xs rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-slate-300 hover:bg-cyan-500/10 hover:border-cyan-500/30 hover:text-cyan-400 transition-all duration-300"
-          >
-            <PencilSimple size={14} />
-            تعديل
-          </motion.button>
-        )}
-        {canDeleteRequest && (
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            type="button"
-            onClick={() => confirmDelete(request)}
-            className="inline-flex items-center gap-1 text-xs rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-1.5 text-red-400 hover:bg-red-500/10 hover:border-red-500/40 transition-all duration-300"
-          >
-            <Trash size={14} />
-            حذف
-          </motion.button>
-        )}
-      </div>
+      <ActionButtons
+        onEdit={() => openEdit(req, mapRequestToForm)}
+        onDelete={() => confirmDelete(req)}
+        canEdit={canEditReq}
+        canDelete={canDeleteReq}
+      />
     );
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-slate-400 text-sm">إدارة وعرض جميع طلبات العملاء للبحث عن عقارات</p>
-        </div>
-        <motion.button
-          whileHover={{ scale: 1.02, y: -2 }}
-          whileTap={{ scale: 0.98 }}
-          type="button"
-          onClick={openCreateModal}
-          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-l from-cyan-500 to-emerald-500 text-white text-sm font-semibold px-5 py-2.5 shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all duration-300"
-        >
-          <Plus size={20} weight="bold" />
-          إضافة طلب جديد
-        </motion.button>
-      </div>
+      <PageHeader
+        subtitle="إدارة طلبات العملاء"
+        onAdd={openCreate}
+        addLabel="إضافة طلب جديد"
+      />
 
-      {/* Table */}
-      <Table columns={columns} data={requests} loading={isLoading} />
+      <Table columns={columns} data={requests} loading={isLoading} actions={actions} />
 
-      {/* Modal */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingRequest ? 'تعديل الطلب' : 'إضافة طلب عميل جديد'}>
+      <Modal isOpen={isOpen} onClose={close} title={isEditing ? 'تعديل الطلب' : 'إضافة طلب جديد'}>
         <form onSubmit={handleSubmit} className="space-y-5 text-right">
+          {/* نوع + استخدام */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelClasses}>نوع العقار</label>
-              <input
-                name="type"
-                className={inputClasses}
-                value={formData.type}
-                onChange={handleChange}
-                required
-              />
+              <select name="type" className={inputClasses} value={formData.type} onChange={handleChange} required>
+                {PROPERTY_TYPE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
             </div>
             <div>
               <label className={labelClasses}>الاستخدام</label>
-              <input
-                name="usage"
-                className={inputClasses}
-                value={formData.usage}
-                onChange={handleChange}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelClasses}>حالة الأرض</label>
-              <input
-                name="landStatus"
-                className={inputClasses}
-                value={formData.landStatus}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div>
-              <label className={labelClasses}>الأولوية</label>
-              <select
-                name="priority"
-                className={inputClasses}
-                value={formData.priority}
-                onChange={handleChange}
-              >
-                <option value="High">مرتفعة</option>
-                <option value="Medium">متوسطة</option>
-                <option value="Low">منخفضة</option>
+              <select name="usage" className={inputClasses} value={formData.usage} onChange={handleChange} required>
+                {USAGE_TYPE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
             </div>
           </div>
 
+          {/* الغرض + الأولوية */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelClasses}>المدينة</label>
-              <input
-                name="city"
-                className={inputClasses}
-                value={formData.city}
-                onChange={handleChange}
-                required
-              />
+              <label className={labelClasses}>الغرض</label>
+              <select name="purpose" className={inputClasses} value={formData.purpose} onChange={handleChange}>
+                <option value="">اختر</option>
+                {PURPOSE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
             </div>
             <div>
-              <label className={labelClasses}>الحي</label>
-              <input
-                name="district"
-                className={inputClasses}
-                value={formData.district}
-                onChange={handleChange}
-                required
-              />
+              <label className={labelClasses}>الأولوية</label>
+              <select name="priority" className={inputClasses} value={formData.priority} onChange={handleChange}>
+                {PRIORITY_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
             </div>
           </div>
 
+          {/* مدينة + حي */}
+          <CityDistrictSelect
+            cityValue={formData.city}
+            districtValue={formData.district}
+            onCityChange={handleChange}
+            onDistrictChange={handleChange}
+            required
+          />
+
+          {/* مساحة */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelClasses}>المساحة من (م²)</label>
-              <input
-                name="areaFrom"
-                type="number"
-                className={inputClasses}
-                value={formData.areaFrom}
-                onChange={handleChange}
-              />
+              <label className={labelClasses}>المساحة من</label>
+              <input name="areaFrom" type="number" className={inputClasses} value={formData.areaFrom} onChange={handleChange} />
             </div>
             <div>
-              <label className={labelClasses}>المساحة إلى (م²)</label>
-              <input
-                name="areaTo"
-                type="number"
-                className={inputClasses}
-                value={formData.areaTo}
-                onChange={handleChange}
-              />
+              <label className={labelClasses}>المساحة إلى</label>
+              <input name="areaTo" type="number" className={inputClasses} value={formData.areaTo} onChange={handleChange} />
             </div>
           </div>
 
+          {/* ميزانية */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelClasses}>الميزانية من (ج.م)</label>
-              <input
-                name="budgetFrom"
-                type="number"
-                className={inputClasses}
-                value={formData.budgetFrom}
-                onChange={handleChange}
-              />
+              <label className={labelClasses}>الميزانية من</label>
+              <input name="budgetFrom" type="number" className={inputClasses} value={formData.budgetFrom} onChange={handleChange} />
             </div>
             <div>
-              <label className={labelClasses}>الميزانية إلى (ج.م)</label>
-              <input
-                name="budgetTo"
-                type="number"
-                className={inputClasses}
-                value={formData.budgetTo}
-                onChange={handleChange}
-              />
+              <label className={labelClasses}>الميزانية إلى</label>
+              <input name="budgetTo" type="number" className={inputClasses} value={formData.budgetTo} onChange={handleChange} />
             </div>
           </div>
 
+          {/* Submit */}
           <motion.button
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.99 }}
             type="submit"
             disabled={isSubmitting}
-            className="w-full rounded-xl bg-gradient-to-l from-cyan-500 to-emerald-500 text-white text-sm font-bold py-3.5 shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
+            className={submitButtonClasses}
           >
-            {isSubmitting
-              ? 'جاري الحفظ...'
-              : editingRequest
-                ? 'تحديث الطلب'
-                : 'حفظ الطلب'}
+            {isSubmitting ? 'جاري الحفظ...' : isEditing ? 'تحديث' : 'حفظ'}
           </motion.button>
         </form>
       </Modal>
