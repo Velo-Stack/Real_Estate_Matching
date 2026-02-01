@@ -1,5 +1,14 @@
 const prisma = require('../utils/prisma');
 
+// Helper: Get user's team ID
+const getUserTeamId = async (userId) => {
+  const membership = await prisma.teamMember.findFirst({
+    where: { userId },
+    select: { teamId: true }
+  });
+  return membership?.teamId || null;
+};
+
 const getMatches = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -7,21 +16,42 @@ const getMatches = async (req, res) => {
 
     let where = {};
 
-    if (role === 'BROKER') {
-      // Show matches where the Broker owns the Offer OR the Request
-      where = {
-        OR: [
-          { offer: { createdById: userId } },
-          { request: { createdById: userId } }
-        ]
-      };
+    if (role !== 'ADMIN') {
+      // Get user's team ID and filter by team
+      const teamId = await getUserTeamId(userId);
+      if (teamId) {
+        where = {
+          OR: [
+            { offer: { teamId } },
+            { request: { teamId } }
+          ]
+        };
+      } else {
+        // No team - show only own offers/requests
+        where = {
+          OR: [
+            { offer: { createdById: userId } },
+            { request: { createdById: userId } }
+          ]
+        };
+      }
     }
 
     const matches = await prisma.match.findMany({
       where,
       include: {
-        offer: { include: { createdBy: { select: { id: true, name: true, email: true } } } },
-        request: { include: { createdBy: { select: { id: true, name: true, email: true } } } }
+        offer: {
+          include: {
+            createdBy: { select: { id: true, name: true, email: true } },
+            team: { select: { id: true, name: true } }
+          }
+        },
+        request: {
+          include: {
+            createdBy: { select: { id: true, name: true, email: true } },
+            team: { select: { id: true, name: true } }
+          }
+        }
       },
       orderBy: { createdAt: 'desc' }
     });

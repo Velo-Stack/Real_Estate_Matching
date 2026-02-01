@@ -1,6 +1,15 @@
 const prisma = require('../utils/prisma');
 const { matchRequestToOffers } = require('../services/matching.service');
 
+// Helper: Get user's team ID
+const getUserTeamId = async (userId) => {
+  const membership = await prisma.teamMember.findFirst({
+    where: { userId },
+    select: { teamId: true }
+  });
+  return membership?.teamId || null;
+};
+
 const createRequest = async (req, res) => {
   try {
     const {
@@ -11,7 +20,7 @@ const createRequest = async (req, res) => {
 
     // Basic validation: keep numeric ranges mandatory
     if (!type || !usage || areaFrom === undefined || areaTo === undefined ||
-        budgetFrom === undefined || budgetTo === undefined || !priority) {
+      budgetFrom === undefined || budgetTo === undefined || !priority) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
@@ -20,6 +29,9 @@ const createRequest = async (req, res) => {
     if (!user) {
       return res.status(401).json({ message: 'User not found' });
     }
+
+    // Get user's team ID
+    const teamId = await getUserTeamId(req.user.id);
 
     const data = {
       type,
@@ -35,7 +47,8 @@ const createRequest = async (req, res) => {
       budgetFrom: parseFloat(budgetFrom) || 0,
       budgetTo: parseFloat(budgetTo) || 0,
       priority,
-      createdById: req.user.id
+      createdById: req.user.id,
+      teamId // Auto-assign team
     };
 
     const request = await prisma.request.create({ data });
@@ -51,9 +64,17 @@ const createRequest = async (req, res) => {
 
 const getRequests = async (req, res) => {
   try {
-    // Visibility: All visible
+    const { role } = req.user;
     const { type, usage, purpose, city, district, minBudget, maxBudget, minArea, maxArea, priority, cityId, neighborhoodId } = req.query;
     const where = {};
+
+    // Team-based filtering for MANAGER and BROKER
+    if (role !== 'ADMIN') {
+      const teamId = await getUserTeamId(req.user.id);
+      if (teamId) {
+        where.teamId = teamId;
+      }
+    }
 
     if (type) where.type = type;
     if (usage) where.usage = usage;
@@ -62,8 +83,8 @@ const getRequests = async (req, res) => {
     if (priority) where.priority = priority;
     if (cityId) where.cityId = parseInt(cityId);
     if (neighborhoodId) where.neighborhoodId = parseInt(neighborhoodId);
-    
-    // Budget Overlap: budgetTo >= minQuery AND budgetFrom <= maxQuery
+
+    // Budget Overlap
     if (minBudget) where.budgetTo = { gte: parseFloat(minBudget) };
     if (maxBudget) where.budgetFrom = { lte: parseFloat(maxBudget) };
 
@@ -73,10 +94,11 @@ const getRequests = async (req, res) => {
     const requests = await prisma.request.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      include: { 
+      include: {
         createdBy: { select: { id: true, name: true, role: true } },
         cityRel: { select: { id: true, name: true } },
-        neighborhoodRel: { select: { id: true, name: true, cityId: true } }
+        neighborhoodRel: { select: { id: true, name: true, cityId: true } },
+        team: { select: { id: true, name: true } }
       }
     });
     res.json(requests);

@@ -1,11 +1,40 @@
 const prisma = require('../utils/prisma');
 
+// Helper: Get user's team ID
+const getUserTeamId = async (userId) => {
+  const membership = await prisma.teamMember.findFirst({
+    where: { userId },
+    select: { teamId: true }
+  });
+  return membership?.teamId || null;
+};
+
 const getSummary = async (req, res) => {
   try {
+    const { role } = req.user;
+    let where = {};
+
+    // Team-based filtering for non-ADMIN
+    if (role !== 'ADMIN') {
+      const teamId = await getUserTeamId(req.user.id);
+      if (teamId) {
+        where = { teamId };
+      }
+    }
+
     const [offersCount, requestsCount, matchesCount] = await Promise.all([
-      prisma.offer.count(),
-      prisma.request.count(),
-      prisma.match.count()
+      prisma.offer.count({ where }),
+      prisma.request.count({ where }),
+      role === 'ADMIN'
+        ? prisma.match.count()
+        : prisma.match.count({
+          where: {
+            OR: [
+              { offer: where },
+              { request: where }
+            ]
+          }
+        })
     ]);
 
     res.json({
@@ -20,9 +49,21 @@ const getSummary = async (req, res) => {
 
 const getTopBrokers = async (req, res) => {
   try {
+    const { role } = req.user;
+    let where = {};
+
+    // Team-based filtering for non-ADMIN
+    if (role !== 'ADMIN') {
+      const teamId = await getUserTeamId(req.user.id);
+      if (teamId) {
+        where = { teamId };
+      }
+    }
+
     // Top Brokers by number of OFFERS created
     const topOfferers = await prisma.offer.groupBy({
       by: ['createdById'],
+      where,
       _count: {
         id: true,
       },
@@ -33,18 +74,13 @@ const getTopBrokers = async (req, res) => {
       },
       take: 5,
     });
-    
-    // Fetch User Details (Name)
-    // Prisma groupBy doesn't include relation data directly. 
-    // We must fetch users manually or use a different query strategy.
-    
+
     const brokerIds = topOfferers.map(item => item.createdById);
     const brokers = await prisma.user.findMany({
       where: { id: { in: brokerIds } },
       select: { id: true, name: true }
     });
-    
-    // Merge
+
     const result = topOfferers.map(item => {
       const broker = brokers.find(b => b.id === item.createdById);
       return {
@@ -62,9 +98,21 @@ const getTopBrokers = async (req, res) => {
 
 const getTopAreas = async (req, res) => {
   try {
+    const { role } = req.user;
+    let where = {};
+
+    // Team-based filtering for non-ADMIN
+    if (role !== 'ADMIN') {
+      const teamId = await getUserTeamId(req.user.id);
+      if (teamId) {
+        where = { teamId };
+      }
+    }
+
     // Group by City
     const topCities = await prisma.offer.groupBy({
       by: ['city'],
+      where,
       _count: {
         id: true,
       },

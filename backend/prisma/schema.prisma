@@ -130,6 +130,10 @@ model Offer {
   createdById Int
   createdBy   User @relation(fields: [createdById], references: [id])
 
+  // Team relation
+  teamId Int?
+  team   Team? @relation("TeamOffers", fields: [teamId], references: [id])
+
   cityRel         City?         @relation(fields: [cityId], references: [id])
   neighborhoodRel Neighborhood? @relation(fields: [neighborhoodId], references: [id])
   matches         Match[]
@@ -160,6 +164,10 @@ model Request {
   // Relations
   createdById Int
   createdBy   User @relation(fields: [createdById], references: [id])
+
+  // Team relation
+  teamId Int?
+  team   Team? @relation("TeamRequests", fields: [teamId], references: [id])
 
   cityRel         City?         @relation(fields: [cityId], references: [id])
   neighborhoodRel Neighborhood? @relation(fields: [neighborhoodId], references: [id])
@@ -229,6 +237,8 @@ model Team {
   type          TeamType
   members       TeamMember[]
   conversations Conversation[]
+  offers        Offer[]        @relation("TeamOffers")
+  requests      Request[]      @relation("TeamRequests")
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @default(now()) @updatedAt
 }

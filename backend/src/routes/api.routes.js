@@ -10,6 +10,7 @@ const { exportExcel, exportPDF } = require('../controllers/reports.controller');
 const { getEnums, getCities, getNeighborhoods } = require('../controllers/meta.controller');
 const { createTeam, getTeams, addMember, listMembers } = require('../controllers/teams.controller');
 const { listConversations, createConversation, getMessages, postMessage, markRead } = require('../controllers/conversations.controller');
+const { getMyTeam } = require('../controllers/me.controller');
 const auth = require('../middlewares/auth.middleware');
 const auditLog = require('../middlewares/audit.middleware');
 
@@ -413,6 +414,9 @@ router.post('/teams', auth(['ADMIN']), auditLog('Team'), createTeam);
 router.get('/teams', auth(['ADMIN', 'MANAGER']), getTeams);
 router.post('/teams/:id/members', auth(['ADMIN']), auditLog('TeamMember'), addMember);
 router.get('/teams/:id/members', auth(['ADMIN', 'MANAGER']), listMembers);
+
+// User's Team Info
+router.get('/me/team', auth(['ADMIN', 'MANAGER', 'BROKER']), getMyTeam);
 
 // Conversations / Messages
 router.get('/conversations', auth(['ADMIN', 'MANAGER', 'BROKER']), listConversations);

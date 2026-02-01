@@ -1,6 +1,15 @@
 const prisma = require('../utils/prisma');
 const { matchOfferToRequests } = require('../services/matching.service');
 
+// Helper: Get user's team ID
+const getUserTeamId = async (userId) => {
+  const membership = await prisma.teamMember.findFirst({
+    where: { userId },
+    select: { teamId: true }
+  });
+  return membership?.teamId || null;
+};
+
 const createOffer = async (req, res) => {
   try {
     // Extract fields (supporting new fields for dropdowns/relations)
@@ -12,7 +21,7 @@ const createOffer = async (req, res) => {
 
     // Basic validation: keep numeric ranges mandatory, others optional (add more rules later as needed)
     if (!type || !usage || areaFrom === undefined || areaTo === undefined ||
-        priceFrom === undefined || priceTo === undefined) {
+      priceFrom === undefined || priceTo === undefined) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
@@ -21,6 +30,9 @@ const createOffer = async (req, res) => {
     if (!user) {
       return res.status(401).json({ message: 'User not found' });
     }
+
+    // Get user's team ID
+    const teamId = await getUserTeamId(req.user.id);
 
     const data = {
       type,
@@ -40,7 +52,8 @@ const createOffer = async (req, res) => {
       contractType: contractType || null,
       description,
       coordinates,
-      createdById: req.user.id
+      createdById: req.user.id,
+      teamId // Auto-assign team
     };
 
     const offer = await prisma.offer.create({ data });
@@ -56,9 +69,17 @@ const createOffer = async (req, res) => {
 
 const getOffers = async (req, res) => {
   try {
-    // Visibility: Visible to ALL (No ownership filter)
+    const { role } = req.user;
     const { type, usage, city, district, minPrice, maxPrice, minArea, maxArea, cityId, neighborhoodId, purpose, brokersCount } = req.query;
     const where = {};
+
+    // Team-based filtering for MANAGER and BROKER
+    if (role !== 'ADMIN') {
+      const teamId = await getUserTeamId(req.user.id);
+      if (teamId) {
+        where.teamId = teamId;
+      }
+    }
 
     if (type) where.type = type;
     if (usage) where.usage = usage;
@@ -70,30 +91,23 @@ const getOffers = async (req, res) => {
     if (brokersCount) where.brokersCount = parseInt(brokersCount);
 
     // Range Filters
-    // If Offer Price (From-To) overlaps with search range? 
-    // Or normally: Offer Price >= user Min and Offer Price <= User Max?
-    // Since Offer is also a range, it's ambiguous. 
-    // Let's assume user searches for a specific value X, does it fit in the bucket?
-    // Or user searches R1-R2. 
-    // Let's implement: "Has any price >= minPrice" and "Has any price <= maxPrice"
-    // Effectively: priceTo >= minPrice AND priceFrom <= maxPrice (Overlap Logic)
-    
     if (minPrice) where.priceTo = { gte: parseFloat(minPrice) };
     if (maxPrice) where.priceFrom = { lte: parseFloat(maxPrice) };
-    
+
     if (minArea) where.areaTo = { gte: parseFloat(minArea) };
     if (maxArea) where.areaFrom = { lte: parseFloat(maxArea) };
-    
+
     // Additional: Filter by Specific Broker? "Search by Broker"
     if (req.query.brokerId) where.createdById = parseInt(req.query.brokerId);
 
     const offers = await prisma.offer.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      include: { 
+      include: {
         createdBy: { select: { id: true, name: true, role: true } },
         cityRel: { select: { id: true, name: true } },
-        neighborhoodRel: { select: { id: true, name: true, cityId: true } }
+        neighborhoodRel: { select: { id: true, name: true, cityId: true } },
+        team: { select: { id: true, name: true } }
       }
     });
     res.json(offers);
