@@ -3,25 +3,37 @@ const prisma = require('../utils/prisma');
 const calculateScore = (offer, request) => {
   let score = 0;
 
-  // 1. Type (20%)
-  if (offer.type === request.type) score += 20;
+  // 1. Type (15%)
+  if (offer.type === request.type) score += 15;
 
-  // 2. Usage (20%)
-  if (offer.usage === request.usage) score += 20;
+  // 2. Usage (15%)
+  if (offer.usage === request.usage) score += 15;
 
-  // 3. Location (20%) - City (10%) + District (10%)
-  if (offer.city === request.city) {
-    score += 10;
-    if (offer.district === request.district) {
+  // 3. Purpose (10%) - if both specify purpose
+  if (offer.purpose && request.purpose && offer.purpose === request.purpose) score += 10;
+
+  // 4. Location (20%) - prefer IDs (cityId/neighborhoodId), fallback to strings
+  if (offer.cityId && request.cityId) {
+    if (offer.cityId === request.cityId) {
       score += 10;
+      if (offer.neighborhoodId && request.neighborhoodId && offer.neighborhoodId === request.neighborhoodId) {
+        score += 10;
+      }
+    }
+  } else if (offer.city && request.city) {
+    if (offer.city === request.city) {
+      score += 10;
+      if (offer.district && request.district && offer.district === request.district) {
+        score += 10;
+      }
     }
   }
 
-  // 4. Area (20%) - Check Overlap
+  // 5. Area (20%) - Check Overlap
   const areaOverlap = Math.max(offer.areaFrom, request.areaFrom) <= Math.min(offer.areaTo, request.areaTo);
   if (areaOverlap) score += 20;
 
-  // 5. Price (20%) - Check Overlap (Offer Price vs Request Budget)
+  // 6. Price (20%) - Check Overlap (Offer Price vs Request Budget)
   // Converting Decimal to Number for comparison
   const offerMin = Number(offer.priceFrom);
   const offerMax = Number(offer.priceTo);
@@ -133,8 +145,8 @@ const matchOfferToRequests = async (offer) => {
       
       await prisma.notification.createMany({
         data: [
-          { userId: offer.createdById, matchId: created.id, status: 'UNREAD' },
-          { userId: match.requestOwnerId, matchId: created.id, status: 'UNREAD' }
+          { userId: offer.createdById, matchId: created.id, type: 'MATCH', meta: { score: created.score }, status: 'UNREAD' },
+          { userId: match.requestOwnerId, matchId: created.id, type: 'MATCH', meta: { score: created.score }, status: 'UNREAD' }
         ]
       });
 
@@ -194,8 +206,8 @@ const matchRequestToOffers = async (request) => {
 
         await prisma.notification.createMany({
           data: [
-            { userId: offer.createdById, matchId: created.id, status: 'UNREAD' },
-            { userId: request.createdById, matchId: created.id, status: 'UNREAD' }
+            { userId: offer.createdById, matchId: created.id, type: 'MATCH', meta: { score: created.score }, status: 'UNREAD' },
+            { userId: request.createdById, matchId: created.id, type: 'MATCH', meta: { score: created.score }, status: 'UNREAD' }
           ]
         });
 

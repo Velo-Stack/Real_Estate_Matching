@@ -7,6 +7,9 @@ const { getNotifications, updateNotification } = require('../controllers/notific
 const { getSummary, getTopBrokers, getTopAreas } = require('../controllers/dashboard.controller');
 const { getAuditLogs } = require('../controllers/audit.controller');
 const { exportExcel, exportPDF } = require('../controllers/reports.controller');
+const { getEnums, getCities, getNeighborhoods } = require('../controllers/meta.controller');
+const { createTeam, getTeams, addMember, listMembers } = require('../controllers/teams.controller');
+const { listConversations, createConversation, getMessages, postMessage, markRead } = require('../controllers/conversations.controller');
 const auth = require('../middlewares/auth.middleware');
 const auditLog = require('../middlewares/audit.middleware');
 
@@ -399,6 +402,24 @@ router.patch('/notifications/:id', auth(['ADMIN', 'MANAGER', 'BROKER']), updateN
  *                   type: integer
  */
 router.get('/dashboard/summary', auth(['ADMIN', 'MANAGER', 'BROKER']), getSummary);
+
+// Meta & Locations
+router.get('/meta/enums', auth(['ADMIN', 'MANAGER', 'BROKER']), getEnums);
+router.get('/locations/cities', auth(['ADMIN', 'MANAGER', 'BROKER']), getCities);
+router.get('/locations/neighborhoods', auth(['ADMIN', 'MANAGER', 'BROKER']), getNeighborhoods);
+
+// Teams & Internal Communication
+router.post('/teams', auth(['ADMIN']), auditLog('Team'), createTeam);
+router.get('/teams', auth(['ADMIN', 'MANAGER']), getTeams);
+router.post('/teams/:id/members', auth(['ADMIN']), auditLog('TeamMember'), addMember);
+router.get('/teams/:id/members', auth(['ADMIN', 'MANAGER']), listMembers);
+
+// Conversations / Messages
+router.get('/conversations', auth(['ADMIN', 'MANAGER', 'BROKER']), listConversations);
+router.post('/conversations', auth(['ADMIN', 'MANAGER', 'BROKER']), createConversation);
+router.get('/conversations/:id/messages', auth(['ADMIN', 'MANAGER', 'BROKER']), getMessages);
+router.post('/conversations/:id/messages', auth(['ADMIN', 'MANAGER', 'BROKER']), postMessage);
+router.patch('/conversations/:id/read', auth(['ADMIN', 'MANAGER', 'BROKER']), markRead);
 
 /**
  * @swagger

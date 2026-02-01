@@ -3,20 +3,41 @@ const { matchOfferToRequests } = require('../services/matching.service');
 
 const createOffer = async (req, res) => {
   try {
-    // Extract new mandatory fields
-    const { 
-      type, usage, landStatus, city, district, 
-      areaFrom, areaTo, priceFrom, priceTo, 
-      exclusivity, description, coordinates 
+    // Extract fields (supporting new fields for dropdowns/relations)
+    const {
+      type, usage, landStatus, city, district, cityId, neighborhoodId, purpose, brokersCount,
+      areaFrom, areaTo, priceFrom, priceTo,
+      exclusivity, contractType, description, coordinates
     } = req.body;
 
+    // Basic validation: keep numeric ranges mandatory, others optional (add more rules later as needed)
+    if (!type || !usage || areaFrom === undefined || areaTo === undefined ||
+        priceFrom === undefined || priceTo === undefined) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    // Validate user exists
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
+
     const data = {
-      type, usage, landStatus, city, district,
+      type,
+      usage,
+      landStatus: landStatus || null,
+      city: city || null,
+      district: district || null,
+      cityId: cityId ? parseInt(cityId) : null,
+      neighborhoodId: neighborhoodId ? parseInt(neighborhoodId) : null,
+      purpose: purpose || null,
+      brokersCount: brokersCount ? parseInt(brokersCount) : null,
       areaFrom: parseFloat(areaFrom),
       areaTo: parseFloat(areaTo),
-      priceFrom: parseFloat(priceFrom),
-      priceTo: parseFloat(priceTo),
-      exclusivity,
+      priceFrom: parseFloat(priceFrom) || 0,
+      priceTo: parseFloat(priceTo) || 0,
+      exclusivity: exclusivity || null,
+      contractType: contractType || null,
       description,
       coordinates,
       createdById: req.user.id
@@ -36,13 +57,17 @@ const createOffer = async (req, res) => {
 const getOffers = async (req, res) => {
   try {
     // Visibility: Visible to ALL (No ownership filter)
-    const { type, usage, city, district, minPrice, maxPrice, minArea, maxArea } = req.query;
+    const { type, usage, city, district, minPrice, maxPrice, minArea, maxArea, cityId, neighborhoodId, purpose, brokersCount } = req.query;
     const where = {};
 
     if (type) where.type = type;
     if (usage) where.usage = usage;
     if (city) where.city = { contains: city, mode: 'insensitive' }; // Flexible
     if (district) where.district = { contains: district, mode: 'insensitive' };
+    if (cityId) where.cityId = parseInt(cityId);
+    if (neighborhoodId) where.neighborhoodId = parseInt(neighborhoodId);
+    if (purpose) where.purpose = purpose;
+    if (brokersCount) where.brokersCount = parseInt(brokersCount);
 
     // Range Filters
     // If Offer Price (From-To) overlaps with search range? 
@@ -66,9 +91,9 @@ const getOffers = async (req, res) => {
       where,
       orderBy: { createdAt: 'desc' },
       include: { 
-        createdBy: { 
-          select: { id: true, name: true, role: true } 
-        } 
+        createdBy: { select: { id: true, name: true, role: true } },
+        cityRel: { select: { id: true, name: true } },
+        neighborhoodRel: { select: { id: true, name: true, cityId: true } }
       }
     });
     res.json(offers);

@@ -8,14 +8,18 @@ const getNotifications = async (req, res) => {
       include: {
         match: {
           include: {
-            offer: { select: { title: true, type: true, city: true, priceFrom: true } },
-            request: { select: { type: true, city: true, budgetFrom: true } }
+            offer: { select: { id: true, type: true, city: true, priceFrom: true, priceTo: true } },
+            request: { select: { id: true, type: true, city: true, budgetFrom: true, budgetTo: true } }
           }
+        },
+        user: {
+          select: { id: true, name: true, email: true }
         }
       }
     });
     res.json(notifications);
   } catch (error) {
+    console.error('Error in getNotifications:', error);
     res.status(500).json({ error: error.message });
   }
 };

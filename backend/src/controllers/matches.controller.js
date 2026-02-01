@@ -11,8 +11,8 @@ const getMatches = async (req, res) => {
       // Show matches where the Broker owns the Offer OR the Request
       where = {
         OR: [
-          { offer: { userId: userId } },
-          { request: { userId: userId } }
+          { offer: { createdById: userId } },
+          { request: { createdById: userId } }
         ]
       };
     }
@@ -20,14 +20,15 @@ const getMatches = async (req, res) => {
     const matches = await prisma.match.findMany({
       where,
       include: {
-        offer: { include: { user: { select: { name: true, email: true } } } },
-        request: { include: { user: { select: { name: true, email: true } } } }
+        offer: { include: { createdBy: { select: { id: true, name: true, email: true } } } },
+        request: { include: { createdBy: { select: { id: true, name: true, email: true } } } }
       },
       orderBy: { createdAt: 'desc' }
     });
 
     res.json(matches);
   } catch (error) {
+    console.error('Error in getMatches:', error);
     res.status(500).json({ error: error.message });
   }
 };

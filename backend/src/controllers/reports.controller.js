@@ -5,6 +5,12 @@ const prisma = require('../utils/prisma');
 const exportExcel = async (req, res) => {
   try {
     const { type } = req.query;
+    
+    // Validate type parameter
+    if (!type || !['offers', 'requests', 'matches'].includes(type)) {
+      return res.status(400).json({ message: 'Invalid or missing type parameter. Use: offers, requests, or matches' });
+    }
+    
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Report');
     
@@ -110,6 +116,12 @@ const exportExcel = async (req, res) => {
 const exportPDF = async (req, res) => {
   try {
     const { type } = req.query;
+    
+    // Validate type parameter
+    if (!type || !['offers', 'requests', 'matches'].includes(type)) {
+      return res.status(400).json({ message: 'Invalid or missing type parameter. Use: offers, requests, or matches' });
+    }
+    
     const doc = new PDFDocument();
     
     res.setHeader('Content-Type', 'application/pdf');
@@ -145,6 +157,19 @@ const exportPDF = async (req, res) => {
         doc.fontSize(10).text(`   Budget: ${req.budgetFrom} - ${req.budgetTo} EGP`);
         doc.fontSize(10).text(`   Priority: ${req.priority}`);
         doc.fontSize(10).text(`   Broker: ${req.createdBy.name}`);
+        doc.moveDown();
+      });
+    } else if (type === 'matches') {
+      const matches = await prisma.match.findMany({
+        include: {
+          offer: { select: { type: true, city: true } },
+          request: { select: { type: true, city: true } }
+        }
+      });
+      
+      matches.forEach((match, index) => {
+        doc.fontSize(12).text(`${index + 1}. Offer: ${match.offer.type} (${match.offer.city}) <-> Request: ${match.request.type} (${match.request.city})`);
+        doc.fontSize(10).text(`   Score: ${match.score} | Status: ${match.status}`);
         doc.moveDown();
       });
     }
