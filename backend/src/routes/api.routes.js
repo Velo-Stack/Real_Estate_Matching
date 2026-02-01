@@ -2,13 +2,13 @@ const express = require('express');
 const { createOffer, getOffers, updateOffer, deleteOffer } = require('../controllers/offers.controller');
 const { createRequest, getRequests, updateRequest, deleteRequest } = require('../controllers/requests.controller');
 const { getMatches, updateMatchStatus } = require('../controllers/matches.controller');
-const { createUser, getAllUsers } = require('../controllers/users.controller');
+const { createUser, getAllUsers, getUserById, updateUser, patchUserStatus, deleteUser } = require('../controllers/users.controller');
 const { getNotifications, updateNotification } = require('../controllers/notifications.controller');
 const { getSummary, getTopBrokers, getTopAreas } = require('../controllers/dashboard.controller');
 const { getAuditLogs } = require('../controllers/audit.controller');
 const { exportExcel, exportPDF } = require('../controllers/reports.controller');
 const { getEnums, getCities, getNeighborhoods } = require('../controllers/meta.controller');
-const { createTeam, getTeams, addMember, listMembers } = require('../controllers/teams.controller');
+const { createTeam, getTeams, getTeamById, updateTeam, deleteTeam, addMember, removeMember, updateMemberRole, listMembers } = require('../controllers/teams.controller');
 const { listConversations, createConversation, getMessages, postMessage, markRead } = require('../controllers/conversations.controller');
 const { getMyTeam } = require('../controllers/me.controller');
 const auth = require('../middlewares/auth.middleware');
@@ -282,6 +282,10 @@ router.patch('/matches/:id', auth(['ADMIN', 'MANAGER', 'BROKER']), updateMatchSt
  */
 router.post('/users', auth(['ADMIN', 'MANAGER', 'BROKER']), auditLog('User'), createUser);
 router.get('/users', auth(['ADMIN', 'MANAGER']), getAllUsers);
+router.get('/users/:id', auth(['ADMIN', 'MANAGER', 'BROKER']), getUserById);
+router.put('/users/:id', auth(['ADMIN', 'MANAGER', 'BROKER']), auditLog('User'), updateUser);
+router.patch('/users/:id/status', auth(['ADMIN']), auditLog('User'), patchUserStatus);
+router.delete('/users/:id', auth(['ADMIN']), auditLog('User'), deleteUser);
 
 /**
  * @swagger
@@ -410,10 +414,15 @@ router.get('/locations/cities', auth(['ADMIN', 'MANAGER', 'BROKER']), getCities)
 router.get('/locations/neighborhoods', auth(['ADMIN', 'MANAGER', 'BROKER']), getNeighborhoods);
 
 // Teams & Internal Communication
-router.post('/teams', auth(['ADMIN']), auditLog('Team'), createTeam);
-router.get('/teams', auth(['ADMIN', 'MANAGER']), getTeams);
-router.post('/teams/:id/members', auth(['ADMIN']), auditLog('TeamMember'), addMember);
-router.get('/teams/:id/members', auth(['ADMIN', 'MANAGER']), listMembers);
+router.post('/teams', auth(['ADMIN', 'MANAGER']), auditLog('Team'), createTeam);
+router.get('/teams', auth(['ADMIN', 'MANAGER', 'BROKER']), getTeams);
+router.get('/teams/:id', auth(['ADMIN', 'MANAGER', 'BROKER']), getTeamById);
+router.put('/teams/:id', auth(['ADMIN', 'MANAGER']), auditLog('Team'), updateTeam);
+router.delete('/teams/:id', auth(['ADMIN']), auditLog('Team'), deleteTeam);
+router.post('/teams/:id/members', auth(['ADMIN', 'MANAGER']), auditLog('TeamMember'), addMember);
+router.get('/teams/:id/members', auth(['ADMIN', 'MANAGER', 'BROKER']), listMembers);
+router.delete('/teams/:id/members/:memberId', auth(['ADMIN', 'MANAGER']), auditLog('TeamMember'), removeMember);
+router.patch('/teams/:id/members/:memberId', auth(['ADMIN', 'MANAGER']), auditLog('TeamMember'), updateMemberRole);
 
 // User's Team Info
 router.get('/me/team', auth(['ADMIN', 'MANAGER', 'BROKER']), getMyTeam);

@@ -40,6 +40,7 @@ const createUser = async (req, res) => {
         name: true,
         email: true,
         role: true,
+        status: true,
         createdAt: true
       }
     });
@@ -55,37 +56,24 @@ const createUser = async (req, res) => {
 
 const getAllUsers = async (req, res) => {
   try {
-    // Only Admin/Manager can see all? Or everyone?
-    // User said "Any User sees the whole system".
-    // "1. Admin: View all data".
-    // "2. Manager: View ... (didn't specify Users)".
-    // "3. Broker: ...".
-    // Previous prompt: "GET /users ... Admin/Manager".
-    // New prompt: "One of the detailed rules: Any User sees whole system".
-    // I'll allow everyone to see users for now, or match the list.
-    // "GET /users" linked to Dashboard-Reports.
-    // I'll stick to Admin/Manager for ALL users list to avoid leaking detailed broker list to competitors if that's a concern. 
-    // BUT user said "Any User sees whole system".
-    // I will allow it but maybe restricted?
-    // Let's stick to Admin/Manager for /users list based on typical security, unless specified otherwise.
-    // Prompt 1: "GET /users ... Role: Admin / Manager".
-    // Prompt 2: "User Creation Rules... Any Account = Broker minimum".
-    // I'll stick to Admin/Manager for listing users.
-    
-    // Check perm
+    // Only Admin/Manager can list users
     if (req.user.role === 'BROKER') {
-        // Maybe return only self?
-        // Or access denied?
-        // I will allow Admin/Manager as per Prompt 1.
-        return res.status(403).json({ message: 'Access denied' });
+      return res.status(403).json({ message: 'Access denied' });
     }
 
+    const { role, status } = req.query;
+    const where = {};
+    if (role) where.role = role;
+    if (status) where.status = status;
+
     const users = await prisma.user.findMany({
+      where,
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
+        status: true,
         createdAt: true
       }
     });
@@ -95,4 +83,99 @@ const getAllUsers = async (req, res) => {
   }
 };
 
-module.exports = { createUser, getAllUsers };
+const getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    // Brokers can only view themselves
+    if (req.user.role === 'BROKER' && req.user.id !== parseInt(id)) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(id) },
+      select: { id: true, name: true, email: true, role: true, status: true, createdAt: true }
+    });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const updateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, password, role } = req.body;
+    const currentUser = req.user;
+
+    const user = await prisma.user.findUnique({ where: { id: parseInt(id) } });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Permissions: Admin or owner
+    if (currentUser.role !== 'ADMIN' && currentUser.id !== parseInt(id)) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Only Admin can change role
+    if (role && currentUser.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Only Admin can change role' });
+    }
+
+    // Store old data for audit
+    req.oldData = user;
+
+    const data = {};
+    if (name) data.name = name;
+    if (email) data.email = email;
+    if (role) data.role = role;
+    if (password) data.password = await bcrypt.hash(password, 10);
+
+    const updated = await prisma.user.update({ where: { id: parseInt(id) }, data, select: { id: true, name: true, email: true, role: true, status: true, createdAt: true } });
+    res.json(updated);
+  } catch (error) {
+    if (error.code === 'P2002') return res.status(400).json({ message: 'Email already exists' });
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const patchUserStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const currentUser = req.user;
+
+    if (currentUser.role !== 'ADMIN') return res.status(403).json({ message: 'Only Admin can change status' });
+
+    const user = await prisma.user.findUnique({ where: { id: parseInt(id) } });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Store old data for audit
+    req.oldData = user;
+
+    const updated = await prisma.user.update({ where: { id: parseInt(id) }, data: { status }, select: { id: true, name: true, email: true, role: true, status: true } });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (req.user.role !== 'ADMIN') return res.status(403).json({ message: 'Only Admin can delete users' });
+
+    const user = await prisma.user.findUnique({ where: { id: parseInt(id) } });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Store old data for audit
+    req.oldData = user;
+
+    // Soft delete by marking status DELETED
+    await prisma.user.update({ where: { id: parseInt(id) }, data: { status: 'DELETED' } });
+    res.json({ message: 'User marked as deleted' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = { createUser, getAllUsers, getUserById, updateUser, patchUserStatus, deleteUser };

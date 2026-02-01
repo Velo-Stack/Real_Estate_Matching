@@ -81,6 +81,13 @@ enum AuditAction {
   DELETE
 }
 
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+  DELETED
+}
+
 // Models
 model User {
   id       Int    @id @default(autoincrement())
@@ -88,6 +95,7 @@ model User {
   name     String
   password String
   role     Role   @default(BROKER)
+  status   UserStatus @default(ACTIVE)
 
   createdOffers            Offer[]
   createdRequests          Request[]

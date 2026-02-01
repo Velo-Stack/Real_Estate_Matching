@@ -19,13 +19,13 @@ async function main() {
   // Admin User (use find/create to avoid upsert runtime path)
   let admin = await prisma.user.findUnique({ where: { email: 'admin@example.com' } });
   if (!admin) {
-    admin = await prisma.user.create({ data: { email: 'admin@example.com', name: 'System Admin', password: hashedPassword, role: 'ADMIN' } });
+    admin = await prisma.user.create({ data: { email: 'admin@example.com', name: 'System Admin', password: hashedPassword, role: 'ADMIN', status: 'ACTIVE' } });
   }
 
   // Broker User
   let broker = await prisma.user.findUnique({ where: { email: 'broker@example.com' } });
   if (!broker) {
-    broker = await prisma.user.create({ data: { email: 'broker@example.com', name: 'Ahmed Broker', password: hashedPassword, role: 'BROKER' } });
+    broker = await prisma.user.create({ data: { email: 'broker@example.com', name: 'Ahmed Broker', password: hashedPassword, role: 'BROKER', status: 'ACTIVE' } });
   }
 
   // Seed Cities & Neighborhoods
@@ -128,7 +128,7 @@ async function main() {
 
   // Create a Manager user and assign to teams
   let manager = await prisma.user.findUnique({ where: { email: 'manager@example.com' } });
-  if (!manager) manager = await prisma.user.create({ data: { email: 'manager@example.com', name: 'Manager User', password: hashedPassword, role: 'MANAGER' } });
+  if (!manager) manager = await prisma.user.create({ data: { email: 'manager@example.com', name: 'Manager User', password: hashedPassword, role: 'MANAGER', status: 'ACTIVE' } });
 
   // Create default teams (find or create)
   let landsTeam = await prisma.team.findFirst({ where: { name: 'فريق اراضي' } });
