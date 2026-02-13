@@ -4,7 +4,7 @@ const { createRequest, getRequests, updateRequest, deleteRequest } = require('..
 const { getMatches, updateMatchStatus } = require('../controllers/matches.controller');
 const { createUser, getAllUsers, getUserById, updateUser, patchUserStatus, deleteUser } = require('../controllers/users.controller');
 const { getNotifications, updateNotification } = require('../controllers/notifications.controller');
-const { getSummary, getTopBrokers, getTopAreas } = require('../controllers/dashboard.controller');
+const { getSummary, getTopBrokers, getTopAreas, getActivityGaps } = require('../controllers/dashboard.controller');
 const { getAuditLogs } = require('../controllers/audit.controller');
 const { exportExcel, exportPDF } = require('../controllers/reports.controller');
 const { getEnums, getCities, getNeighborhoods } = require('../controllers/meta.controller');
@@ -341,6 +341,13 @@ router.get('/audit-logs', auth(['ADMIN', 'MANAGER']), getAuditLogs);
  *     tags: [Notifications]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [UNREAD, READ, ARCHIVED]
+ *         description: Optional status filter
  *     responses:
  *       200:
  *         description: List of notifications for current user
@@ -407,6 +414,19 @@ router.patch('/notifications/:id', auth(['ADMIN', 'MANAGER', 'BROKER']), updateN
  *                   type: integer
  */
 router.get('/dashboard/summary', auth(['ADMIN', 'MANAGER', 'BROKER']), getSummary);
+/**
+ * @swagger
+ * /dashboard/activity-gaps:
+ *   get:
+ *     summary: Get latest offer/request/match timestamps and gap in minutes between latest two
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Activity gaps payload
+ */
+router.get('/dashboard/activity-gaps', auth(['ADMIN', 'MANAGER', 'BROKER']), getActivityGaps);
 
 // Meta & Locations
 router.get('/meta/enums', auth(['ADMIN', 'MANAGER', 'BROKER']), getEnums);

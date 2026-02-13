@@ -2,8 +2,16 @@ const prisma = require('../utils/prisma');
 
 const getNotifications = async (req, res) => {
   try {
+    const { status } = req.query;
+    if (status && !['UNREAD', 'READ', 'ARCHIVED'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status filter' });
+    }
+
+    const where = { userId: req.user.id };
+    if (status) where.status = status;
+
     const notifications = await prisma.notification.findMany({
-      where: { userId: req.user.id },
+      where,
       orderBy: { createdAt: 'desc' },
       include: {
         match: {

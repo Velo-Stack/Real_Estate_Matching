@@ -130,4 +130,68 @@ const getTopAreas = async (req, res) => {
   }
 };
 
-module.exports = { getSummary, getTopBrokers, getTopAreas };
+const getActivityGaps = async (req, res) => {
+  try {
+    const { role } = req.user;
+    let baseWhere = {};
+
+    if (role !== 'ADMIN') {
+      const teamId = await getUserTeamId(req.user.id);
+      if (teamId) {
+        baseWhere = { teamId };
+      }
+    }
+
+    const [offers, requests, matches] = await Promise.all([
+      prisma.offer.findMany({
+        where: baseWhere,
+        orderBy: { createdAt: 'desc' },
+        take: 2,
+        select: { id: true, createdAt: true }
+      }),
+      prisma.request.findMany({
+        where: baseWhere,
+        orderBy: { createdAt: 'desc' },
+        take: 2,
+        select: { id: true, createdAt: true }
+      }),
+      role === 'ADMIN'
+        ? prisma.match.findMany({
+          orderBy: { createdAt: 'desc' },
+          take: 2,
+          select: { id: true, createdAt: true }
+        })
+        : prisma.match.findMany({
+          where: {
+            OR: [
+              { offer: baseWhere },
+              { request: baseWhere }
+            ]
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 2,
+          select: { id: true, createdAt: true }
+        })
+    ]);
+
+    const diffMinutes = (items) => {
+      if (items.length < 2) return null;
+      const latest = new Date(items[0].createdAt).getTime();
+      const previous = new Date(items[1].createdAt).getTime();
+      return Math.round((latest - previous) / 60000);
+    };
+
+    return res.json({
+      lastOfferAt: offers[0]?.createdAt || null,
+      offerGapMinutes: diffMinutes(offers),
+      lastRequestAt: requests[0]?.createdAt || null,
+      requestGapMinutes: diffMinutes(requests),
+      lastMatchAt: matches[0]?.createdAt || null,
+      matchGapMinutes: diffMinutes(matches)
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = { getSummary, getTopBrokers, getTopAreas, getActivityGaps };
