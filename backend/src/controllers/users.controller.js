@@ -1,6 +1,8 @@
 const prisma = require('../utils/prisma');
 const bcrypt = require('bcryptjs');
 
+const ASSIGNABLE_ROLES = ['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY'];
+
 const createUser = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
@@ -11,18 +13,17 @@ const createUser = async (req, res) => {
       return res.status(400).json({ message: 'Name, email, and password are required' });
     }
 
+    if (currentUser.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Only Admin can create users' });
+    }
+
     // Role Enforcement
     let newRole = 'BROKER'; // Default
-    
-    if (currentUser.role === 'ADMIN') {
-      if (role && ['ADMIN', 'MANAGER', 'BROKER'].includes(role)) {
-        newRole = role;
+    if (role) {
+      if (!ASSIGNABLE_ROLES.includes(role)) {
+        return res.status(400).json({ message: 'Invalid role' });
       }
-    } else if (currentUser.role === 'MANAGER') {
-       return res.status(403).json({ message: 'Managers cannot create users' });
-    } else {
-      // Broker
-      newRole = 'BROKER';
+      newRole = role;
     }
 
     // Hash Password
@@ -57,7 +58,7 @@ const createUser = async (req, res) => {
 const getAllUsers = async (req, res) => {
   try {
     // Only Admin/Manager can list users
-    if (req.user.role === 'BROKER') {
+    if (!['ADMIN', 'MANAGER'].includes(req.user.role)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -86,8 +87,8 @@ const getAllUsers = async (req, res) => {
 const getUserById = async (req, res) => {
   try {
     const { id } = req.params;
-    // Brokers can only view themselves
-    if (req.user.role === 'BROKER' && req.user.id !== parseInt(id)) {
+    // Non admin/manager users can only view themselves
+    if (!['ADMIN', 'MANAGER'].includes(req.user.role) && req.user.id !== parseInt(id)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -119,6 +120,9 @@ const updateUser = async (req, res) => {
     // Only Admin can change role
     if (role && currentUser.role !== 'ADMIN') {
       return res.status(403).json({ message: 'Only Admin can change role' });
+    }
+    if (role && !ASSIGNABLE_ROLES.includes(role)) {
+      return res.status(400).json({ message: 'Invalid role' });
     }
 
     // Store old data for audit

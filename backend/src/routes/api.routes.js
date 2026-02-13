@@ -69,8 +69,8 @@ const router = express.Router();
  *       200:
  *         description: List of offers
  */
-router.post('/offers', auth(['ADMIN', 'MANAGER', 'BROKER']), auditLog('Offer'), createOffer);
-router.get('/offers', auth(['ADMIN', 'MANAGER', 'BROKER']), getOffers);
+router.post('/offers', auth(['ADMIN', 'MANAGER', 'DATA_ENTRY_ONLY']), auditLog('Offer'), createOffer);
+router.get('/offers', auth(['ADMIN', 'MANAGER', 'EMPLOYEE']), getOffers);
 
 /**
  * @swagger
@@ -110,8 +110,8 @@ router.get('/offers', auth(['ADMIN', 'MANAGER', 'BROKER']), getOffers);
  *       200:
  *         description: Offer deleted
  */
-router.put('/offers/:id', auth(['ADMIN', 'MANAGER', 'BROKER']), auditLog('Offer'), updateOffer);
-router.delete('/offers/:id', auth(['ADMIN', 'MANAGER', 'BROKER']), auditLog('Offer'), deleteOffer);
+router.put('/offers/:id', auth(['ADMIN', 'MANAGER']), auditLog('Offer'), updateOffer);
+router.delete('/offers/:id', auth(['ADMIN', 'MANAGER']), auditLog('Offer'), deleteOffer);
 
 /**
  * @swagger
@@ -152,8 +152,8 @@ router.delete('/offers/:id', auth(['ADMIN', 'MANAGER', 'BROKER']), auditLog('Off
  *       200:
  *         description: List of requests
  */
-router.post('/requests', auth(['ADMIN', 'MANAGER', 'BROKER']), auditLog('Request'), createRequest);
-router.get('/requests', auth(['ADMIN', 'MANAGER', 'BROKER']), getRequests);
+router.post('/requests', auth(['ADMIN', 'MANAGER', 'DATA_ENTRY_ONLY']), auditLog('Request'), createRequest);
+router.get('/requests', auth(['ADMIN', 'MANAGER', 'EMPLOYEE']), getRequests);
 
 /**
  * @swagger
@@ -193,8 +193,8 @@ router.get('/requests', auth(['ADMIN', 'MANAGER', 'BROKER']), getRequests);
  *       200:
  *         description: Request deleted
  */
-router.put('/requests/:id', auth(['ADMIN', 'MANAGER', 'BROKER']), auditLog('Request'), updateRequest);
-router.delete('/requests/:id', auth(['ADMIN', 'MANAGER', 'BROKER']), auditLog('Request'), deleteRequest);
+router.put('/requests/:id', auth(['ADMIN', 'MANAGER']), auditLog('Request'), updateRequest);
+router.delete('/requests/:id', auth(['ADMIN', 'MANAGER']), auditLog('Request'), deleteRequest);
 
 /**
  * @swagger
@@ -244,7 +244,7 @@ router.get('/matches', auth(['ADMIN', 'MANAGER', 'BROKER']), getMatches);
  *       200:
  *         description: Status updated
  */
-router.patch('/matches/:id', auth(['ADMIN', 'MANAGER', 'BROKER']), updateMatchStatus);
+router.patch('/matches/:id', auth(['ADMIN', 'MANAGER']), updateMatchStatus);
 
 /**
  * @swagger
@@ -280,10 +280,10 @@ router.patch('/matches/:id', auth(['ADMIN', 'MANAGER', 'BROKER']), updateMatchSt
  *       200:
  *         description: List of users
  */
-router.post('/users', auth(['ADMIN', 'MANAGER', 'BROKER']), auditLog('User'), createUser);
+router.post('/users', auth(['ADMIN']), auditLog('User'), createUser);
 router.get('/users', auth(['ADMIN', 'MANAGER']), getAllUsers);
-router.get('/users/:id', auth(['ADMIN', 'MANAGER', 'BROKER']), getUserById);
-router.put('/users/:id', auth(['ADMIN', 'MANAGER', 'BROKER']), auditLog('User'), updateUser);
+router.get('/users/:id', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getUserById);
+router.put('/users/:id', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), auditLog('User'), updateUser);
 router.patch('/users/:id/status', auth(['ADMIN']), auditLog('User'), patchUserStatus);
 router.delete('/users/:id', auth(['ADMIN']), auditLog('User'), deleteUser);
 
@@ -352,7 +352,7 @@ router.get('/audit-logs', auth(['ADMIN', 'MANAGER']), getAuditLogs);
  *       200:
  *         description: List of notifications for current user
  */
-router.get('/notifications', auth(['ADMIN', 'MANAGER', 'BROKER']), getNotifications);
+router.get('/notifications', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getNotifications);
 
 /**
  * @swagger
@@ -381,7 +381,7 @@ router.get('/notifications', auth(['ADMIN', 'MANAGER', 'BROKER']), getNotificati
  *       200:
  *         description: Notification updated
  */
-router.patch('/notifications/:id', auth(['ADMIN', 'MANAGER', 'BROKER']), updateNotification);
+router.patch('/notifications/:id', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), updateNotification);
 
 /**
  * @swagger
@@ -429,30 +429,30 @@ router.get('/dashboard/summary', auth(['ADMIN', 'MANAGER', 'BROKER']), getSummar
 router.get('/dashboard/activity-gaps', auth(['ADMIN', 'MANAGER', 'BROKER']), getActivityGaps);
 
 // Meta & Locations
-router.get('/meta/enums', auth(['ADMIN', 'MANAGER', 'BROKER']), getEnums);
-router.get('/locations/cities', auth(['ADMIN', 'MANAGER', 'BROKER']), getCities);
-router.get('/locations/neighborhoods', auth(['ADMIN', 'MANAGER', 'BROKER']), getNeighborhoods);
+router.get('/meta/enums', auth(['ADMIN', 'MANAGER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getEnums);
+router.get('/locations/cities', auth(['ADMIN', 'MANAGER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getCities);
+router.get('/locations/neighborhoods', auth(['ADMIN', 'MANAGER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getNeighborhoods);
 
 // Teams & Internal Communication
 router.post('/teams', auth(['ADMIN', 'MANAGER']), auditLog('Team'), createTeam);
-router.get('/teams', auth(['ADMIN', 'MANAGER', 'BROKER']), getTeams);
-router.get('/teams/:id', auth(['ADMIN', 'MANAGER', 'BROKER']), getTeamById);
+router.get('/teams', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getTeams);
+router.get('/teams/:id', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getTeamById);
 router.put('/teams/:id', auth(['ADMIN', 'MANAGER']), auditLog('Team'), updateTeam);
 router.delete('/teams/:id', auth(['ADMIN']), auditLog('Team'), deleteTeam);
 router.post('/teams/:id/members', auth(['ADMIN', 'MANAGER']), auditLog('TeamMember'), addMember);
-router.get('/teams/:id/members', auth(['ADMIN', 'MANAGER', 'BROKER']), listMembers);
+router.get('/teams/:id/members', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), listMembers);
 router.delete('/teams/:id/members/:memberId', auth(['ADMIN', 'MANAGER']), auditLog('TeamMember'), removeMember);
 router.patch('/teams/:id/members/:memberId', auth(['ADMIN', 'MANAGER']), auditLog('TeamMember'), updateMemberRole);
 
 // User's Team Info
-router.get('/me/team', auth(['ADMIN', 'MANAGER', 'BROKER']), getMyTeam);
+router.get('/me/team', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getMyTeam);
 
 // Conversations / Messages
-router.get('/conversations', auth(['ADMIN', 'MANAGER', 'BROKER']), listConversations);
-router.post('/conversations', auth(['ADMIN', 'MANAGER', 'BROKER']), createConversation);
-router.get('/conversations/:id/messages', auth(['ADMIN', 'MANAGER', 'BROKER']), getMessages);
-router.post('/conversations/:id/messages', auth(['ADMIN', 'MANAGER', 'BROKER']), postMessage);
-router.patch('/conversations/:id/read', auth(['ADMIN', 'MANAGER', 'BROKER']), markRead);
+router.get('/conversations', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), listConversations);
+router.post('/conversations', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), createConversation);
+router.get('/conversations/:id/messages', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getMessages);
+router.post('/conversations/:id/messages', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), postMessage);
+router.patch('/conversations/:id/read', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), markRead);
 
 /**
  * @swagger
