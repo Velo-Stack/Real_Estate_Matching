@@ -44,6 +44,41 @@ enum PurposeType {
   INVESTMENT
 }
 
+enum SubmittedByType {
+  OWNER
+  AGENT
+  DIRECT_BROKER
+  BROKER
+  BUYER
+}
+
+enum PropertySubType {
+  LAND
+  APARTMENT
+  VILLA
+  FLOOR
+  TOWNHOUSE
+  DUPLEX
+  PALACE
+  RESIDENTIAL_BUILDING
+  COMMERCIAL_BUILDING
+  RESIDENTIAL_TOWER
+  HOTEL
+  HOSPITAL
+  SHOWROOM
+  RESIDENTIAL_COMPOUND
+  OFFICE
+  OFFICE_TOWER
+  ADMIN_BUILDING
+  EXISTING_WAREHOUSE
+  LOW_RISK_WORKSHOP
+  HIGH_RISK_WORKSHOP
+  FACTORY
+  EXISTING_FARM
+  RESORT
+  CHALET
+}
+
 enum ContractType {
   WITH_MEDIATION_CONTRACT
   WITHOUT_MEDIATION_CONTRACT
@@ -122,6 +157,13 @@ model Offer {
   neighborhoodId Int?
   purpose        PurposeType?
   brokersCount   Int?
+  submittedBy    SubmittedByType?
+  propertySubType PropertySubType?
+  boundaries     String?
+  lengths        String?
+  facades        String?
+  brokerContactName  String?
+  brokerContactPhone String?
 
   areaFrom     Float
   areaTo       Float
@@ -162,6 +204,11 @@ model Request {
   district       String?
   cityId         Int?
   neighborhoodId Int?
+  submittedBy    SubmittedByType?
+  propertySubType PropertySubType?
+  description    String?
+  brokerContactName  String?
+  brokerContactPhone String?
 
   areaFrom   Float
   areaTo     Float

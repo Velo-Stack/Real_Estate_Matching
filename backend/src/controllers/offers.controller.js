@@ -1,5 +1,6 @@
 const prisma = require('../utils/prisma');
 const { matchOfferToRequests } = require('../services/matching.service');
+const { SUBMITTED_BY_TYPES, isValidSubtypeForUsage } = require('../utils/property-subtypes');
 
 // Helper: Get user's team ID
 const getUserTeamId = async (userId) => {
@@ -16,13 +17,20 @@ const createOffer = async (req, res) => {
     const {
       type, usage, landStatus, city, district, cityId, neighborhoodId, purpose, brokersCount,
       areaFrom, areaTo, priceFrom, priceTo,
-      exclusivity, contractType, description, coordinates
+      exclusivity, contractType, description, coordinates,
+      submittedBy, propertySubType, boundaries, lengths, facades, brokerContactName, brokerContactPhone
     } = req.body;
 
     // Basic validation: keep numeric ranges mandatory, others optional (add more rules later as needed)
     if (!type || !usage || areaFrom === undefined || areaTo === undefined ||
       priceFrom === undefined || priceTo === undefined) {
       return res.status(400).json({ message: 'Missing required fields' });
+    }
+    if (submittedBy && !SUBMITTED_BY_TYPES.includes(submittedBy)) {
+      return res.status(400).json({ message: 'Invalid submittedBy value' });
+    }
+    if (!isValidSubtypeForUsage(usage, propertySubType)) {
+      return res.status(400).json({ message: 'propertySubType is not valid for selected usage' });
     }
 
     // Validate user exists
@@ -50,6 +58,13 @@ const createOffer = async (req, res) => {
       priceTo: parseFloat(priceTo) || 0,
       exclusivity: exclusivity || null,
       contractType: contractType || null,
+      submittedBy: submittedBy || null,
+      propertySubType: propertySubType || null,
+      boundaries: boundaries || null,
+      lengths: lengths || null,
+      facades: facades || null,
+      brokerContactName: brokerContactName || null,
+      brokerContactPhone: brokerContactPhone || null,
       description,
       coordinates,
       createdById: req.user.id,
@@ -70,7 +85,10 @@ const createOffer = async (req, res) => {
 const getOffers = async (req, res) => {
   try {
     const { role } = req.user;
-    const { type, usage, city, district, minPrice, maxPrice, minArea, maxArea, cityId, neighborhoodId, purpose, brokersCount } = req.query;
+    const {
+      type, usage, city, district, minPrice, maxPrice, minArea, maxArea,
+      cityId, neighborhoodId, purpose, brokersCount, submittedBy, propertySubType
+    } = req.query;
     const where = {};
 
     // Team-based filtering for MANAGER and BROKER
@@ -89,6 +107,8 @@ const getOffers = async (req, res) => {
     if (neighborhoodId) where.neighborhoodId = parseInt(neighborhoodId);
     if (purpose) where.purpose = purpose;
     if (brokersCount) where.brokersCount = parseInt(brokersCount);
+    if (submittedBy) where.submittedBy = submittedBy;
+    if (propertySubType) where.propertySubType = propertySubType;
 
     // Range Filters
     if (minPrice) where.priceTo = { gte: parseFloat(minPrice) };
@@ -131,6 +151,15 @@ const updateOffer = async (req, res) => {
 
     // Store old data for audit
     req.oldData = offer;
+    const finalUsage = req.body.usage || offer.usage;
+    const finalPropertySubType = req.body.propertySubType || offer.propertySubType;
+    const finalSubmittedBy = req.body.submittedBy || offer.submittedBy;
+    if (finalSubmittedBy && !SUBMITTED_BY_TYPES.includes(finalSubmittedBy)) {
+      return res.status(400).json({ message: 'Invalid submittedBy value' });
+    }
+    if (!isValidSubtypeForUsage(finalUsage, finalPropertySubType)) {
+      return res.status(400).json({ message: 'propertySubType is not valid for selected usage' });
+    }
 
     const updated = await prisma.offer.update({
       where: { id: parseInt(id) },

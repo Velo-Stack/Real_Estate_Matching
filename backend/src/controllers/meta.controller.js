@@ -1,4 +1,5 @@
 const prisma = require('../utils/prisma');
+const { PROPERTY_SUBTYPES_BY_USAGE, SUBMITTED_BY_TYPES, getAllPropertySubTypes } = require('../utils/property-subtypes');
 
 const getEnums = async (req, res) => {
   try {
@@ -10,7 +11,10 @@ const getEnums = async (req, res) => {
       exclusivityTypes: ['EXCLUSIVE', 'NON_EXCLUSIVE'],
       purposeTypes: ['SALE', 'RENT', 'PARTNERSHIP', 'INVESTMENT'],
       contractTypes: ['WITH_MEDIATION_CONTRACT', 'WITHOUT_MEDIATION_CONTRACT'],
-      priorityTypes: ['HIGH', 'MEDIUM', 'LOW']
+      priorityTypes: ['HIGH', 'MEDIUM', 'LOW'],
+      submittedByTypes: SUBMITTED_BY_TYPES,
+      propertySubTypes: getAllPropertySubTypes(),
+      propertySubTypesByUsage: PROPERTY_SUBTYPES_BY_USAGE
     });
   } catch (error) {
     return res.status(500).json({ error: error.message });

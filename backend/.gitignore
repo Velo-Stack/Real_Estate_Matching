@@ -3,3 +3,7 @@ node_modules
 .env
 
 /src/generated/prisma
+
+/postman
+BACKEND_CHANGE_ANALYSIS.md
+BACKEND_CHANGE_ANALYSIS_AR.md
