@@ -130,6 +130,7 @@ model User {
   id       Int    @id @default(autoincrement())
   email    String @unique
   name     String
+  phone    String?
   password String
   role     Role   @default(BROKER)
   status   UserStatus @default(ACTIVE)
@@ -141,9 +142,23 @@ model User {
   teamMemberships          TeamMember[]
   conversationParticipants ConversationParticipant[]
   messagesSent             Message[]
+  submissionLinks          UserSubmissionLink[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model UserSubmissionLink {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  user           User     @relation(fields: [userId], references: [id])
+  tokenHash      String   @unique
+  allowedActions Json?
+  expiresAt      DateTime?
+  isActive       Boolean  @default(true)
+  createdById    Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model Offer {

@@ -2,10 +2,11 @@ const prisma = require('../utils/prisma');
 const bcrypt = require('bcryptjs');
 
 const ASSIGNABLE_ROLES = ['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY'];
+const INTERNAL_ROLES = ['MANAGER', 'EMPLOYEE', 'DATA_ENTRY_ONLY'];
 
 const createUser = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, phone } = req.body;
     const currentUser = req.user;
 
     // Validation
@@ -25,6 +26,9 @@ const createUser = async (req, res) => {
       }
       newRole = role;
     }
+    if (INTERNAL_ROLES.includes(newRole) && !phone) {
+      return res.status(400).json({ message: 'Phone is required for internal users' });
+    }
 
     // Hash Password
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -33,6 +37,7 @@ const createUser = async (req, res) => {
       data: {
         name,
         email,
+        phone: phone || null,
         password: hashedPassword,
         role: newRole
       },
@@ -40,6 +45,7 @@ const createUser = async (req, res) => {
         id: true,
         name: true,
         email: true,
+        phone: true,
         role: true,
         status: true,
         createdAt: true
@@ -73,6 +79,7 @@ const getAllUsers = async (req, res) => {
         id: true,
         name: true,
         email: true,
+        phone: true,
         role: true,
         status: true,
         createdAt: true
@@ -94,7 +101,7 @@ const getUserById = async (req, res) => {
 
     const user = await prisma.user.findUnique({
       where: { id: parseInt(id) },
-      select: { id: true, name: true, email: true, role: true, status: true, createdAt: true }
+      select: { id: true, name: true, email: true, phone: true, role: true, status: true, createdAt: true }
     });
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json(user);
@@ -106,7 +113,7 @@ const getUserById = async (req, res) => {
 const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, phone } = req.body;
     const currentUser = req.user;
 
     const user = await prisma.user.findUnique({ where: { id: parseInt(id) } });
@@ -124,6 +131,11 @@ const updateUser = async (req, res) => {
     if (role && !ASSIGNABLE_ROLES.includes(role)) {
       return res.status(400).json({ message: 'Invalid role' });
     }
+    const effectiveRole = role || user.role;
+    const effectivePhone = phone !== undefined ? phone : user.phone;
+    if (INTERNAL_ROLES.includes(effectiveRole) && !effectivePhone) {
+      return res.status(400).json({ message: 'Phone is required for internal users' });
+    }
 
     // Store old data for audit
     req.oldData = user;
@@ -131,10 +143,11 @@ const updateUser = async (req, res) => {
     const data = {};
     if (name) data.name = name;
     if (email) data.email = email;
+    if (phone !== undefined) data.phone = phone;
     if (role) data.role = role;
     if (password) data.password = await bcrypt.hash(password, 10);
 
-    const updated = await prisma.user.update({ where: { id: parseInt(id) }, data, select: { id: true, name: true, email: true, role: true, status: true, createdAt: true } });
+    const updated = await prisma.user.update({ where: { id: parseInt(id) }, data, select: { id: true, name: true, email: true, phone: true, role: true, status: true, createdAt: true } });
     res.json(updated);
   } catch (error) {
     if (error.code === 'P2002') return res.status(400).json({ message: 'Email already exists' });
@@ -156,7 +169,7 @@ const patchUserStatus = async (req, res) => {
     // Store old data for audit
     req.oldData = user;
 
-    const updated = await prisma.user.update({ where: { id: parseInt(id) }, data: { status }, select: { id: true, name: true, email: true, role: true, status: true } });
+    const updated = await prisma.user.update({ where: { id: parseInt(id) }, data: { status }, select: { id: true, name: true, email: true, phone: true, role: true, status: true } });
     res.json(updated);
   } catch (error) {
     res.status(500).json({ error: error.message });

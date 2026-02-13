@@ -11,6 +11,7 @@ const { getEnums, getCities, getNeighborhoods } = require('../controllers/meta.c
 const { createTeam, getTeams, getTeamById, updateTeam, deleteTeam, addMember, removeMember, updateMemberRole, listMembers } = require('../controllers/teams.controller');
 const { listConversations, createConversation, getMessages, postMessage, markRead } = require('../controllers/conversations.controller');
 const { getMyTeam } = require('../controllers/me.controller');
+const { createSubmissionLink, submitOfferWithToken, submitRequestWithToken } = require('../controllers/submission-links.controller');
 const auth = require('../middlewares/auth.middleware');
 const auditLog = require('../middlewares/audit.middleware');
 
@@ -284,8 +285,11 @@ router.post('/users', auth(['ADMIN']), auditLog('User'), createUser);
 router.get('/users', auth(['ADMIN', 'MANAGER']), getAllUsers);
 router.get('/users/:id', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getUserById);
 router.put('/users/:id', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), auditLog('User'), updateUser);
+router.post('/users/:id/submission-link', auth(['ADMIN']), auditLog('UserSubmissionLink'), createSubmissionLink);
 router.patch('/users/:id/status', auth(['ADMIN']), auditLog('User'), patchUserStatus);
 router.delete('/users/:id', auth(['ADMIN']), auditLog('User'), deleteUser);
+router.post('/public/submissions/offer', submitOfferWithToken);
+router.post('/public/submissions/request', submitRequestWithToken);
 
 /**
  * @swagger
