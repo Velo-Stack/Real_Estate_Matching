@@ -449,9 +449,9 @@ router.get('/me/team', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENT
 
 // Conversations / Messages
 router.get('/conversations', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), listConversations);
-router.post('/conversations', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), createConversation);
+router.post('/conversations', auth(['ADMIN', 'MANAGER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), createConversation);
 router.get('/conversations/:id/messages', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getMessages);
-router.post('/conversations/:id/messages', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), postMessage);
+router.post('/conversations/:id/messages', auth(['ADMIN', 'MANAGER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), postMessage);
 router.patch('/conversations/:id/read', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), markRead);
 
 /**

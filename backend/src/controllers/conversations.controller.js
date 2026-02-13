@@ -6,6 +6,55 @@ const isTeamMember = async (userId, teamId) => {
   return !!mem;
 };
 
+const getUserTeamIds = async (userId) => {
+  const memberships = await prisma.teamMember.findMany({
+    where: { userId },
+    select: { teamId: true }
+  });
+  return memberships.map((m) => m.teamId);
+};
+
+const canMessageRecipient = async (sender, recipientId) => {
+  if (sender.id === recipientId) return true;
+
+  const recipient = await prisma.user.findUnique({
+    where: { id: recipientId },
+    select: { id: true, role: true }
+  });
+
+  if (!recipient) return false;
+  if (sender.role === 'BROKER') return false;
+  if (sender.role === 'ADMIN') return true;
+
+  if (sender.role === 'MANAGER') {
+    if (recipient.role === 'MANAGER') return true;
+    const senderTeamIds = await getUserTeamIds(sender.id);
+    if (!senderTeamIds.length) return false;
+    const sameTeam = await prisma.teamMember.findFirst({
+      where: { userId: recipientId, teamId: { in: senderTeamIds } },
+      select: { id: true }
+    });
+    return !!sameTeam;
+  }
+
+  // Team members (EMPLOYEE / DATA_ENTRY_ONLY / others except ADMIN-MANAGER-BROKER)
+  const senderTeamIds = await getUserTeamIds(sender.id);
+  if (!senderTeamIds.length) return false;
+  const sameTeam = await prisma.teamMember.findFirst({
+    where: { userId: recipientId, teamId: { in: senderTeamIds } },
+    select: { id: true }
+  });
+  return !!sameTeam;
+};
+
+const validateRecipients = async (sender, recipientIds) => {
+  for (const recipientId of recipientIds) {
+    const allowed = await canMessageRecipient(sender, recipientId);
+    if (!allowed) return false;
+  }
+  return true;
+};
+
 // List conversations for current user (either participant or team conv when member)
 const listConversations = async (req, res) => {
   try {
@@ -38,20 +87,35 @@ const createConversation = async (req, res) => {
     const userId = req.user.id;
     const { title, participantIds = [], teamId } = req.body;
 
+    if (req.user.role === 'BROKER') {
+      return res.status(403).json({ message: 'Brokers are not allowed to create conversations' });
+    }
+
     if (teamId) {
       // ensure user is member of team or admin
-      const isMember = await isTeamMember(userId, parseInt(teamId));
+      const parsedTeamId = parseInt(teamId);
+      const isMember = await isTeamMember(userId, parsedTeamId);
       if (!isMember && req.user.role !== 'ADMIN') return res.status(403).json({ message: 'Not allowed to create team conversation' });
       // create conversation tied to team
-      const conv = await prisma.conversation.create({ data: { title: title || null, teamId: parseInt(teamId) } });
+      const conv = await prisma.conversation.create({ data: { title: title || null, teamId: parsedTeamId } });
       return res.status(201).json(conv);
     }
 
     // Create direct/group conversation with participants
+    const normalizedRecipients = [...new Set(participantIds.map((id) => parseInt(id)).filter((id) => !Number.isNaN(id) && id !== userId))];
+    if (!normalizedRecipients.length) {
+      return res.status(400).json({ message: 'At least one valid recipient is required' });
+    }
+
+    const allowed = await validateRecipients(req.user, normalizedRecipients);
+    if (!allowed) {
+      return res.status(403).json({ message: 'One or more recipients are not allowed by messaging policy' });
+    }
+
     const conv = await prisma.conversation.create({ data: { title: title || null } });
 
     // Add participants: include creator
-    const toCreate = new Set([userId, ...(participantIds.map(id => parseInt(id)))]);
+    const toCreate = new Set([userId, ...normalizedRecipients]);
     for (const pid of toCreate) {
       await prisma.conversationParticipant.create({ data: { conversationId: conv.id, userId: pid } });
     }
@@ -88,6 +152,11 @@ const postMessage = async (req, res) => {
     const userId = req.user.id;
     const { id } = req.params; // conversation id
     const { body } = req.body;
+
+    if (req.user.role === 'BROKER') {
+      return res.status(403).json({ message: 'Brokers are not allowed to send messages' });
+    }
+
     if (!body) return res.status(400).json({ message: 'Message body is required' });
 
     const conv = await prisma.conversation.findUnique({ where: { id: parseInt(id) } });
@@ -108,6 +177,12 @@ const postMessage = async (req, res) => {
     } else {
       const parts = await prisma.conversationParticipant.findMany({ where: { conversationId: conv.id } });
       targets = parts.map(p => p.userId);
+    }
+
+    const recipients = targets.filter((uid) => uid !== userId);
+    const allowed = await validateRecipients(req.user, recipients);
+    if (!allowed) {
+      return res.status(403).json({ message: 'Message recipients are not allowed by messaging policy' });
     }
 
     // Emit socket message to each user (skip sender)
