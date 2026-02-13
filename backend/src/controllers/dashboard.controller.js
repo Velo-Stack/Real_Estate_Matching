@@ -60,37 +60,87 @@ const getTopBrokers = async (req, res) => {
       }
     }
 
-    // Top Brokers by number of OFFERS created
-    const topOfferers = await prisma.offer.groupBy({
+    // Weight configuration for broker KPI scoring.
+    const mediationWeightRaw = Number(process.env.TOP_BROKER_MEDIATION_WEIGHT || 1);
+    const closedDealWeightRaw = Number(process.env.TOP_BROKER_CLOSED_DEAL_WEIGHT || 1);
+    const mediationWeight = Number.isFinite(mediationWeightRaw) ? mediationWeightRaw : 1;
+    const closedDealWeight = Number.isFinite(closedDealWeightRaw) ? closedDealWeightRaw : 1;
+
+    // KPI #1: Mediation contracts (offers with mediation contract).
+    const mediationContracts = await prisma.offer.groupBy({
       by: ['createdById'],
-      where,
+      where: {
+        ...where,
+        contractType: 'WITH_MEDIATION_CONTRACT'
+      },
       _count: {
         id: true,
-      },
-      orderBy: {
-        _count: {
-          id: 'desc',
-        },
-      },
-      take: 5,
+      }
     });
 
-    const brokerIds = topOfferers.map(item => item.createdById);
+    // KPI #2: Closed deals (matches with CLOSED status), mapped to offer owner.
+    const closedMatches = await prisma.match.findMany({
+      where: role === 'ADMIN'
+        ? { status: 'CLOSED' }
+        : {
+          status: 'CLOSED',
+          OR: [
+            { offer: where },
+            { request: where }
+          ]
+        },
+      select: {
+        offer: {
+          select: { createdById: true }
+        }
+      }
+    });
+
+    const closedDealsByBroker = {};
+    for (const item of closedMatches) {
+      const brokerId = item.offer.createdById;
+      closedDealsByBroker[brokerId] = (closedDealsByBroker[brokerId] || 0) + 1;
+    }
+
+    const mediationByBroker = {};
+    for (const row of mediationContracts) {
+      mediationByBroker[row.createdById] = row._count.id;
+    }
+
+    const brokerIds = Array.from(new Set([
+      ...Object.keys(mediationByBroker).map(Number),
+      ...Object.keys(closedDealsByBroker).map(Number)
+    ]));
+
+    if (!brokerIds.length) {
+      return res.json([]);
+    }
+
     const brokers = await prisma.user.findMany({
-      where: { id: { in: brokerIds } },
+      where: { id: { in: brokerIds }, role: 'BROKER' },
       select: { id: true, name: true }
     });
 
-    const result = topOfferers.map(item => {
-      const broker = brokers.find(b => b.id === item.createdById);
+    const result = brokers.map((broker) => {
+      const mediationContractsCount = mediationByBroker[broker.id] || 0;
+      const closedDealsCount = closedDealsByBroker[broker.id] || 0;
+      const score = (mediationContractsCount * mediationWeight) + (closedDealsCount * closedDealWeight);
+
       return {
-        brokerId: item.createdById,
-        name: broker ? broker.name : 'Unknown',
-        count: item._count.id
+        brokerId: broker.id,
+        name: broker.name,
+        mediationContractsCount,
+        closedDealsCount,
+        score,
+        scoreWeights: {
+          mediationWeight,
+          closedDealWeight
+        }
       };
     });
 
-    res.json(result);
+    result.sort((a, b) => b.score - a.score);
+    res.json(result.slice(0, 5));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
