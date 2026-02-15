@@ -216,7 +216,7 @@ router.delete('/requests/:id', auth(['ADMIN', 'MANAGER']), auditLog('Request'), 
  *       200:
  *         description: List of matches
  */
-router.get('/matches', auth(['ADMIN', 'MANAGER', 'BROKER']), getMatches);
+router.get('/matches', auth(['ADMIN', 'BROKER']), getMatches);
 
 /**
  * @swagger
@@ -245,7 +245,7 @@ router.get('/matches', auth(['ADMIN', 'MANAGER', 'BROKER']), getMatches);
  *       200:
  *         description: Status updated
  */
-router.patch('/matches/:id', auth(['ADMIN', 'MANAGER']), updateMatchStatus);
+router.patch('/matches/:id', auth(['ADMIN']), updateMatchStatus);
 
 /**
  * @swagger
@@ -455,7 +455,7 @@ router.get('/me/team', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENT
 router.get('/conversations', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), listConversations);
 router.post('/conversations', auth(['ADMIN', 'MANAGER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), createConversation);
 router.get('/conversations/:id/messages', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getMessages);
-router.post('/conversations/:id/messages', auth(['ADMIN', 'MANAGER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), postMessage);
+router.post('/conversations/:id/messages', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), postMessage);
 router.patch('/conversations/:id/read', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), markRead);
 
 /**

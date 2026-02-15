@@ -59,12 +59,17 @@ const validateRecipients = async (sender, recipientIds) => {
 const listConversations = async (req, res) => {
   try {
     const userId = req.user.id;
+    const isBroker = req.user.role === 'BROKER';
 
     // Conversations where user is a participant
     const participantConvs = await prisma.conversation.findMany({
       where: { participants: { some: { userId } } },
       include: { participants: { include: { user: { select: { id: true, name: true } } } }, team: true }
     });
+
+    if (isBroker) {
+      return res.json(participantConvs);
+    }
 
     // Conversations linked to teams where the user is a member
     const teamMemberships = await prisma.teamMember.findMany({ where: { userId } });
@@ -131,6 +136,7 @@ const createConversation = async (req, res) => {
 const getMessages = async (req, res) => {
   try {
     const userId = req.user.id;
+    const isBroker = req.user.role === 'BROKER';
     const { id } = req.params;
     const conv = await prisma.conversation.findUnique({ where: { id: parseInt(id) } });
     if (!conv) return res.status(404).json({ message: 'Conversation not found' });
@@ -138,6 +144,7 @@ const getMessages = async (req, res) => {
     // Access control: participant OR team member OR admin
     const isParticipant = await prisma.conversationParticipant.findFirst({ where: { conversationId: conv.id, userId } });
     const isMember = conv.teamId ? await isTeamMember(userId, conv.teamId) : false;
+    if (isBroker && !isParticipant) return res.status(403).json({ message: 'Access denied' });
     if (!isParticipant && !isMember && req.user.role !== 'ADMIN') return res.status(403).json({ message: 'Access denied' });
 
     const messages = await prisma.message.findMany({ where: { conversationId: conv.id }, orderBy: { createdAt: 'asc' }, include: { sender: { select: { id: true, name: true } } } });
@@ -152,10 +159,7 @@ const postMessage = async (req, res) => {
     const userId = req.user.id;
     const { id } = req.params; // conversation id
     const { body } = req.body;
-
-    if (req.user.role === 'BROKER') {
-      return res.status(403).json({ message: 'Brokers are not allowed to send messages' });
-    }
+    const isBroker = req.user.role === 'BROKER';
 
     if (!body) return res.status(400).json({ message: 'Message body is required' });
 
@@ -165,6 +169,12 @@ const postMessage = async (req, res) => {
     // Access control: same as getMessages
     const isParticipant = await prisma.conversationParticipant.findFirst({ where: { conversationId: conv.id, userId } });
     const isMember = conv.teamId ? await isTeamMember(userId, conv.teamId) : false;
+
+    if (isBroker) {
+      if (!isParticipant) return res.status(403).json({ message: 'Access denied' });
+      if (conv.teamId) return res.status(403).json({ message: 'Brokers can only reply in direct conversations' });
+    }
+
     if (!isParticipant && !isMember && req.user.role !== 'ADMIN') return res.status(403).json({ message: 'Access denied' });
 
     const msg = await prisma.message.create({ data: { conversationId: conv.id, senderId: userId, body, readBy: JSON.stringify([userId]) } });
@@ -180,9 +190,11 @@ const postMessage = async (req, res) => {
     }
 
     const recipients = targets.filter((uid) => uid !== userId);
-    const allowed = await validateRecipients(req.user, recipients);
-    if (!allowed) {
-      return res.status(403).json({ message: 'Message recipients are not allowed by messaging policy' });
+    if (!isBroker) {
+      const allowed = await validateRecipients(req.user, recipients);
+      if (!allowed) {
+        return res.status(403).json({ message: 'Message recipients are not allowed by messaging policy' });
+      }
     }
 
     // Emit socket message to each user (skip sender)
