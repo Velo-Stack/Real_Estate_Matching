@@ -80,12 +80,10 @@ const exportExcel = async (req, res) => {
 
     // Validate type parameter
     if (!type || !["offers", "requests", "matches"].includes(type)) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "Invalid or missing type parameter. Use: offers, requests, or matches",
-        });
+      return res.status(400).json({
+        message:
+          "Invalid or missing type parameter. Use: offers, requests, or matches",
+      });
     }
 
     const workbook = new ExcelJS.Workbook();
@@ -226,12 +224,10 @@ const exportPDF = async (req, res) => {
 
     // Validate type parameter
     if (!type || !["offers", "requests", "matches"].includes(type)) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "Invalid or missing type parameter. Use: offers, requests, or matches",
-        });
+      return res.status(400).json({
+        message:
+          "Invalid or missing type parameter. Use: offers, requests, or matches",
+      });
     }
 
     // helper: detect Arabic chars
@@ -301,11 +297,12 @@ const exportPDF = async (req, res) => {
 
     // try common system fonts that support Arabic (fallback to default)
     const candidateFonts = [
+      path.join(__dirname, "../../../fonts/NotoNaskhArabic-Regular.ttf"), // Prioritize bundled font
+      path.join(__dirname, "../../fonts/NotoNaskhArabic-Regular.ttf"),
       "C:\\Windows\\Fonts\\Tahoma.ttf",
       "C:\\Windows\\Fonts\\Arial.ttf",
       "C:\\Windows\\Fonts\\arialuni.ttf",
       "C:\\Windows\\Fonts\\Times.ttf",
-      path.join(__dirname, "../../fonts/NotoNaskhArabic-Regular.ttf"),
     ];
     const arabicFont = candidateFonts.find((f) => fs.existsSync(f));
 
