@@ -22,6 +22,7 @@
     "@prisma/adapter-pg": "^7.3.0",
     "@prisma/client": "^7.3.0",
     "arabic-reshaper": "^1.1.0",
+    "axios": "^1.13.5",
     "bcryptjs": "^3.0.3",
     "bidi-js": "^1.0.3",
     "cors": "^2.8.6",

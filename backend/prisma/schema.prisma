@@ -118,6 +118,28 @@ enum AuditAction {
   DELETE
 }
 
+enum PermissionAction {
+  // Offers
+  VIEW_OFFERS
+  CREATE_OFFERS
+  EDIT_OFFERS
+  DELETE_OFFERS
+
+  // Requests
+  VIEW_REQUESTS
+  CREATE_REQUESTS
+  EDIT_REQUESTS
+  DELETE_REQUESTS
+
+  // Matches
+  VIEW_MATCHES
+
+  // Admin
+  MANAGE_USERS
+  MANAGE_ROLES
+  MANAGE_SYSTEM_SETTINGS
+}
+
 enum UserStatus {
   ACTIVE
   SUSPENDED
@@ -135,6 +157,10 @@ model User {
   role     Role   @default(BROKER)
   status   UserStatus @default(ACTIVE)
 
+  // Dynamic Permissions
+  permissions          PermissionAction[]
+  useCustomPermissions Boolean            @default(false)
+
   createdOffers            Offer[]
   createdRequests          Request[]
   notifications            Notification[]
@@ -146,6 +172,15 @@ model User {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model RolePermission {
+  id          Int                @id @default(autoincrement())
+  role        Role               @unique
+  permissions PermissionAction[]
+  updatedAt   DateTime           @updatedAt
+
+  createdAt   DateTime           @default(now())
 }
 
 model UserSubmissionLink {

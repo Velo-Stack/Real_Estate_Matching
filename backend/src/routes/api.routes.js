@@ -1,19 +1,80 @@
-const express = require('express');
-const { createOffer, getOffers, updateOffer, deleteOffer } = require('../controllers/offers.controller');
-const { createRequest, getRequests, updateRequest, deleteRequest } = require('../controllers/requests.controller');
-const { getMatches, updateMatchStatus } = require('../controllers/matches.controller');
-const { createUser, getAllUsers, getUserById, updateUser, patchUserStatus, deleteUser } = require('../controllers/users.controller');
-const { getNotifications, updateNotification } = require('../controllers/notifications.controller');
-const { getSummary, getTopBrokers, getTopAreas, getActivityGaps } = require('../controllers/dashboard.controller');
-const { getAuditLogs } = require('../controllers/audit.controller');
-const { exportExcel, exportPDF } = require('../controllers/reports.controller');
-const { getEnums, getCities, getNeighborhoods } = require('../controllers/meta.controller');
-const { createTeam, getTeams, getTeamById, updateTeam, deleteTeam, addMember, removeMember, updateMemberRole, listMembers } = require('../controllers/teams.controller');
-const { listConversations, createConversation, getMessages, postMessage, markRead } = require('../controllers/conversations.controller');
-const { getMyTeam } = require('../controllers/me.controller');
-const { createSubmissionLink, submitOfferWithToken, submitRequestWithToken } = require('../controllers/submission-links.controller');
-const auth = require('../middlewares/auth.middleware');
-const auditLog = require('../middlewares/audit.middleware');
+const express = require("express");
+const {
+  createOffer,
+  getOffers,
+  updateOffer,
+  deleteOffer,
+} = require("../controllers/offers.controller");
+const {
+  createRequest,
+  getRequests,
+  updateRequest,
+  deleteRequest,
+} = require("../controllers/requests.controller");
+const {
+  getMatches,
+  updateMatchStatus,
+} = require("../controllers/matches.controller");
+const {
+  createUser,
+  getAllUsers,
+  getUserById,
+  updateUser,
+  patchUserStatus,
+  deleteUser,
+  getUserPermissions,
+  updateUserPermissions,
+  removeUserPermissions,
+} = require("../controllers/users.controller");
+const {
+  getAllRolePermissions,
+  getRolePermissions,
+  updateRolePermissions,
+} = require("../controllers/roles.controller");
+const {
+  getNotifications,
+  updateNotification,
+} = require("../controllers/notifications.controller");
+const {
+  getSummary,
+  getTopBrokers,
+  getTopAreas,
+  getActivityGaps,
+} = require("../controllers/dashboard.controller");
+const { getAuditLogs } = require("../controllers/audit.controller");
+const { exportExcel, exportPDF } = require("../controllers/reports.controller");
+const {
+  getEnums,
+  getCities,
+  getNeighborhoods,
+} = require("../controllers/meta.controller");
+const {
+  createTeam,
+  getTeams,
+  getTeamById,
+  updateTeam,
+  deleteTeam,
+  addMember,
+  removeMember,
+  updateMemberRole,
+  listMembers,
+} = require("../controllers/teams.controller");
+const {
+  listConversations,
+  createConversation,
+  getMessages,
+  postMessage,
+  markRead,
+} = require("../controllers/conversations.controller");
+const { getMyTeam } = require("../controllers/me.controller");
+const {
+  createSubmissionLink,
+  submitOfferWithToken,
+  submitRequestWithToken,
+} = require("../controllers/submission-links.controller");
+const auth = require("../middlewares/auth.middleware");
+const checkPermission = require("../middlewares/permissions.middleware");
+const auditLog = require("../middlewares/audit.middleware");
 
 const router = express.Router();
 
@@ -43,7 +104,7 @@ const router = express.Router();
  *         description: Offer created
  *       401:
  *         description: Unauthorized
- * 
+ *
  *   get:
  *     summary: Get all offers
  *     tags: [Offers]
@@ -70,8 +131,19 @@ const router = express.Router();
  *       200:
  *         description: List of offers
  */
-router.post('/offers', auth(['ADMIN', 'MANAGER', 'DATA_ENTRY_ONLY']), auditLog('Offer'), createOffer);
-router.get('/offers', auth(['ADMIN', 'MANAGER', 'EMPLOYEE']), getOffers);
+router.post(
+  "/offers",
+  auth(["ADMIN", "MANAGER", "DATA_ENTRY_ONLY"]),
+  checkPermission("CREATE_OFFERS"),
+  auditLog("Offer"),
+  createOffer,
+);
+router.get(
+  "/offers",
+  auth(["ADMIN", "MANAGER", "EMPLOYEE"]),
+  checkPermission("VIEW_OFFERS"),
+  getOffers,
+);
 
 /**
  * @swagger
@@ -95,7 +167,7 @@ router.get('/offers', auth(['ADMIN', 'MANAGER', 'EMPLOYEE']), getOffers);
  *     responses:
  *       200:
  *         description: Offer updated
- * 
+ *
  *   delete:
  *     summary: Delete an offer
  *     tags: [Offers]
@@ -111,8 +183,20 @@ router.get('/offers', auth(['ADMIN', 'MANAGER', 'EMPLOYEE']), getOffers);
  *       200:
  *         description: Offer deleted
  */
-router.put('/offers/:id', auth(['ADMIN', 'MANAGER']), auditLog('Offer'), updateOffer);
-router.delete('/offers/:id', auth(['ADMIN', 'MANAGER']), auditLog('Offer'), deleteOffer);
+router.put(
+  "/offers/:id",
+  auth(["ADMIN", "MANAGER"]),
+  checkPermission("EDIT_OFFERS"),
+  auditLog("Offer"),
+  updateOffer,
+);
+router.delete(
+  "/offers/:id",
+  auth(["ADMIN", "MANAGER"]),
+  checkPermission("DELETE_OFFERS"),
+  auditLog("Offer"),
+  deleteOffer,
+);
 
 /**
  * @swagger
@@ -138,7 +222,7 @@ router.delete('/offers/:id', auth(['ADMIN', 'MANAGER']), auditLog('Offer'), dele
  *     responses:
  *       201:
  *         description: Request created
- * 
+ *
  *   get:
  *     summary: Get all requests
  *     tags: [Requests]
@@ -153,8 +237,19 @@ router.delete('/offers/:id', auth(['ADMIN', 'MANAGER']), auditLog('Offer'), dele
  *       200:
  *         description: List of requests
  */
-router.post('/requests', auth(['ADMIN', 'MANAGER', 'DATA_ENTRY_ONLY']), auditLog('Request'), createRequest);
-router.get('/requests', auth(['ADMIN', 'MANAGER', 'EMPLOYEE']), getRequests);
+router.post(
+  "/requests",
+  auth(["ADMIN", "MANAGER", "DATA_ENTRY_ONLY"]),
+  checkPermission("CREATE_REQUESTS"),
+  auditLog("Request"),
+  createRequest,
+);
+router.get(
+  "/requests",
+  auth(["ADMIN", "MANAGER", "EMPLOYEE"]),
+  checkPermission("VIEW_REQUESTS"),
+  getRequests,
+);
 
 /**
  * @swagger
@@ -178,7 +273,7 @@ router.get('/requests', auth(['ADMIN', 'MANAGER', 'EMPLOYEE']), getRequests);
  *     responses:
  *       200:
  *         description: Request updated
- * 
+ *
  *   delete:
  *     summary: Delete a request
  *     tags: [Requests]
@@ -194,8 +289,20 @@ router.get('/requests', auth(['ADMIN', 'MANAGER', 'EMPLOYEE']), getRequests);
  *       200:
  *         description: Request deleted
  */
-router.put('/requests/:id', auth(['ADMIN', 'MANAGER']), auditLog('Request'), updateRequest);
-router.delete('/requests/:id', auth(['ADMIN', 'MANAGER']), auditLog('Request'), deleteRequest);
+router.put(
+  "/requests/:id",
+  auth(["ADMIN", "MANAGER"]),
+  checkPermission("EDIT_REQUESTS"),
+  auditLog("Request"),
+  updateRequest,
+);
+router.delete(
+  "/requests/:id",
+  auth(["ADMIN", "MANAGER"]),
+  checkPermission("DELETE_REQUESTS"),
+  auditLog("Request"),
+  deleteRequest,
+);
 
 /**
  * @swagger
@@ -216,7 +323,12 @@ router.delete('/requests/:id', auth(['ADMIN', 'MANAGER']), auditLog('Request'), 
  *       200:
  *         description: List of matches
  */
-router.get('/matches', auth(['ADMIN', 'MANAGER', 'BROKER']), getMatches);
+router.get(
+  "/matches",
+  auth(["ADMIN", "MANAGER", "BROKER"]),
+  checkPermission("VIEW_MATCHES"),
+  getMatches,
+);
 
 /**
  * @swagger
@@ -245,7 +357,7 @@ router.get('/matches', auth(['ADMIN', 'MANAGER', 'BROKER']), getMatches);
  *       200:
  *         description: Status updated
  */
-router.patch('/matches/:id', auth(['ADMIN', 'MANAGER']), updateMatchStatus);
+router.patch("/matches/:id", auth(["ADMIN", "MANAGER"]), updateMatchStatus);
 
 /**
  * @swagger
@@ -271,7 +383,7 @@ router.patch('/matches/:id', auth(['ADMIN', 'MANAGER']), updateMatchStatus);
  *     responses:
  *       201:
  *         description: User created
- * 
+ *
  *   get:
  *     summary: Get all users (Admin/Manager only)
  *     tags: [Users]
@@ -281,15 +393,60 @@ router.patch('/matches/:id', auth(['ADMIN', 'MANAGER']), updateMatchStatus);
  *       200:
  *         description: List of users
  */
-router.post('/users', auth(['ADMIN']), auditLog('User'), createUser);
-router.get('/users', auth(['ADMIN', 'MANAGER']), getAllUsers);
-router.get('/users/:id', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getUserById);
-router.put('/users/:id', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), auditLog('User'), updateUser);
-router.post('/users/:id/submission-link', auth(['ADMIN']), auditLog('UserSubmissionLink'), createSubmissionLink);
-router.patch('/users/:id/status', auth(['ADMIN']), auditLog('User'), patchUserStatus);
-router.delete('/users/:id', auth(['ADMIN']), auditLog('User'), deleteUser);
-router.post('/public/submissions/offer', submitOfferWithToken);
-router.post('/public/submissions/request', submitRequestWithToken);
+router.post("/users", auth(["ADMIN"]), auditLog("User"), createUser);
+router.get("/users", auth(["ADMIN", "MANAGER"]), getAllUsers);
+router.get(
+  "/users/:id",
+  auth(["ADMIN", "MANAGER", "BROKER", "EMPLOYEE", "DATA_ENTRY_ONLY"]),
+  getUserById,
+);
+router.put(
+  "/users/:id",
+  auth(["ADMIN", "MANAGER", "BROKER", "EMPLOYEE", "DATA_ENTRY_ONLY"]),
+  auditLog("User"),
+  updateUser,
+);
+router.post(
+  "/users/:id/submission-link",
+  auth(["ADMIN"]),
+  auditLog("UserSubmissionLink"),
+  createSubmissionLink,
+);
+router.patch(
+  "/users/:id/status",
+  auth(["ADMIN"]),
+  auditLog("User"),
+  patchUserStatus,
+);
+router.delete("/users/:id", auth(["ADMIN"]), auditLog("User"), deleteUser);
+
+// User Permissions Management
+router.get("/users/:id/permissions", auth(["ADMIN"]), getUserPermissions);
+router.put(
+  "/users/:id/permissions",
+  auth(["ADMIN"]),
+  auditLog("UserPermission"),
+  updateUserPermissions,
+);
+router.delete(
+  "/users/:id/permissions",
+  auth(["ADMIN"]),
+  auditLog("UserPermission"),
+  removeUserPermissions,
+);
+
+// Role Permissions Management
+router.get("/roles/permissions", auth(["ADMIN"]), getAllRolePermissions);
+router.get("/roles/:roleName/permissions", auth(["ADMIN"]), getRolePermissions);
+router.put(
+  "/roles/:roleName/permissions",
+  auth(["ADMIN"]),
+  auditLog("RolePermission"),
+  updateRolePermissions,
+);
+
+router.post("/public/submissions/offer", submitOfferWithToken);
+router.post("/public/submissions/request", submitRequestWithToken);
 
 /**
  * @swagger
@@ -328,7 +485,7 @@ router.post('/public/submissions/request', submitRequestWithToken);
  *       200:
  *         description: List of audit logs
  */
-router.get('/audit-logs', auth(['ADMIN', 'MANAGER']), getAuditLogs);
+router.get("/audit-logs", auth(["ADMIN", "MANAGER"]), getAuditLogs);
 
 /**
  * @swagger
@@ -356,7 +513,11 @@ router.get('/audit-logs', auth(['ADMIN', 'MANAGER']), getAuditLogs);
  *       200:
  *         description: List of notifications for current user
  */
-router.get('/notifications', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getNotifications);
+router.get(
+  "/notifications",
+  auth(["ADMIN", "MANAGER", "BROKER", "EMPLOYEE", "DATA_ENTRY_ONLY"]),
+  getNotifications,
+);
 
 /**
  * @swagger
@@ -385,7 +546,11 @@ router.get('/notifications', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DA
  *       200:
  *         description: Notification updated
  */
-router.patch('/notifications/:id', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), updateNotification);
+router.patch(
+  "/notifications/:id",
+  auth(["ADMIN", "MANAGER", "BROKER", "EMPLOYEE", "DATA_ENTRY_ONLY"]),
+  updateNotification,
+);
 
 /**
  * @swagger
@@ -417,7 +582,11 @@ router.patch('/notifications/:id', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE
  *                 totalMatches:
  *                   type: integer
  */
-router.get('/dashboard/summary', auth(['ADMIN', 'MANAGER', 'BROKER']), getSummary);
+router.get(
+  "/dashboard/summary",
+  auth(["ADMIN", "MANAGER", "BROKER"]),
+  getSummary,
+);
 /**
  * @swagger
  * /dashboard/activity-gaps:
@@ -430,33 +599,105 @@ router.get('/dashboard/summary', auth(['ADMIN', 'MANAGER', 'BROKER']), getSummar
  *       200:
  *         description: Activity gaps payload
  */
-router.get('/dashboard/activity-gaps', auth(['ADMIN', 'MANAGER', 'BROKER']), getActivityGaps);
+router.get(
+  "/dashboard/activity-gaps",
+  auth(["ADMIN", "MANAGER", "BROKER"]),
+  getActivityGaps,
+);
 
 // Meta & Locations
-router.get('/meta/enums', auth(['ADMIN', 'MANAGER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getEnums);
-router.get('/locations/cities', auth(['ADMIN', 'MANAGER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getCities);
-router.get('/locations/neighborhoods', auth(['ADMIN', 'MANAGER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getNeighborhoods);
+router.get(
+  "/meta/enums",
+  auth(["ADMIN", "MANAGER", "EMPLOYEE", "DATA_ENTRY_ONLY"]),
+  getEnums,
+);
+router.get(
+  "/locations/cities",
+  auth(["ADMIN", "MANAGER", "EMPLOYEE", "DATA_ENTRY_ONLY"]),
+  getCities,
+);
+router.get(
+  "/locations/neighborhoods",
+  auth(["ADMIN", "MANAGER", "EMPLOYEE", "DATA_ENTRY_ONLY"]),
+  getNeighborhoods,
+);
 
 // Teams & Internal Communication
-router.post('/teams', auth(['ADMIN', 'MANAGER']), auditLog('Team'), createTeam);
-router.get('/teams', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getTeams);
-router.get('/teams/:id', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getTeamById);
-router.put('/teams/:id', auth(['ADMIN', 'MANAGER']), auditLog('Team'), updateTeam);
-router.delete('/teams/:id', auth(['ADMIN']), auditLog('Team'), deleteTeam);
-router.post('/teams/:id/members', auth(['ADMIN', 'MANAGER']), auditLog('TeamMember'), addMember);
-router.get('/teams/:id/members', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), listMembers);
-router.delete('/teams/:id/members/:memberId', auth(['ADMIN', 'MANAGER']), auditLog('TeamMember'), removeMember);
-router.patch('/teams/:id/members/:memberId', auth(['ADMIN', 'MANAGER']), auditLog('TeamMember'), updateMemberRole);
+router.post("/teams", auth(["ADMIN", "MANAGER"]), auditLog("Team"), createTeam);
+router.get(
+  "/teams",
+  auth(["ADMIN", "MANAGER", "BROKER", "EMPLOYEE", "DATA_ENTRY_ONLY"]),
+  getTeams,
+);
+router.get(
+  "/teams/:id",
+  auth(["ADMIN", "MANAGER", "BROKER", "EMPLOYEE", "DATA_ENTRY_ONLY"]),
+  getTeamById,
+);
+router.put(
+  "/teams/:id",
+  auth(["ADMIN", "MANAGER"]),
+  auditLog("Team"),
+  updateTeam,
+);
+router.delete("/teams/:id", auth(["ADMIN"]), auditLog("Team"), deleteTeam);
+router.post(
+  "/teams/:id/members",
+  auth(["ADMIN", "MANAGER"]),
+  auditLog("TeamMember"),
+  addMember,
+);
+router.get(
+  "/teams/:id/members",
+  auth(["ADMIN", "MANAGER", "BROKER", "EMPLOYEE", "DATA_ENTRY_ONLY"]),
+  listMembers,
+);
+router.delete(
+  "/teams/:id/members/:memberId",
+  auth(["ADMIN", "MANAGER"]),
+  auditLog("TeamMember"),
+  removeMember,
+);
+router.patch(
+  "/teams/:id/members/:memberId",
+  auth(["ADMIN", "MANAGER"]),
+  auditLog("TeamMember"),
+  updateMemberRole,
+);
 
 // User's Team Info
-router.get('/me/team', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getMyTeam);
+router.get(
+  "/me/team",
+  auth(["ADMIN", "MANAGER", "BROKER", "EMPLOYEE", "DATA_ENTRY_ONLY"]),
+  getMyTeam,
+);
 
 // Conversations / Messages
-router.get('/conversations', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), listConversations);
-router.post('/conversations', auth(['ADMIN', 'MANAGER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), createConversation);
-router.get('/conversations/:id/messages', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getMessages);
-router.post('/conversations/:id/messages', auth(['ADMIN', 'MANAGER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), postMessage);
-router.patch('/conversations/:id/read', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), markRead);
+router.get(
+  "/conversations",
+  auth(["ADMIN", "MANAGER", "BROKER", "EMPLOYEE", "DATA_ENTRY_ONLY"]),
+  listConversations,
+);
+router.post(
+  "/conversations",
+  auth(["ADMIN", "MANAGER", "EMPLOYEE", "DATA_ENTRY_ONLY"]),
+  createConversation,
+);
+router.get(
+  "/conversations/:id/messages",
+  auth(["ADMIN", "MANAGER", "BROKER", "EMPLOYEE", "DATA_ENTRY_ONLY"]),
+  getMessages,
+);
+router.post(
+  "/conversations/:id/messages",
+  auth(["ADMIN", "MANAGER", "EMPLOYEE", "DATA_ENTRY_ONLY"]),
+  postMessage,
+);
+router.patch(
+  "/conversations/:id/read",
+  auth(["ADMIN", "MANAGER", "BROKER", "EMPLOYEE", "DATA_ENTRY_ONLY"]),
+  markRead,
+);
 
 /**
  * @swagger
@@ -470,7 +711,11 @@ router.patch('/conversations/:id/read', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMP
  *       200:
  *         description: List of top brokers with activity count
  */
-router.get('/dashboard/top-brokers', auth(['ADMIN', 'MANAGER', 'BROKER']), getTopBrokers);
+router.get(
+  "/dashboard/top-brokers",
+  auth(["ADMIN", "MANAGER", "BROKER"]),
+  getTopBrokers,
+);
 
 /**
  * @swagger
@@ -484,7 +729,11 @@ router.get('/dashboard/top-brokers', auth(['ADMIN', 'MANAGER', 'BROKER']), getTo
  *       200:
  *         description: List of top areas with request count
  */
-router.get('/dashboard/top-areas', auth(['ADMIN', 'MANAGER', 'BROKER']), getTopAreas);
+router.get(
+  "/dashboard/top-areas",
+  auth(["ADMIN", "MANAGER", "BROKER"]),
+  getTopAreas,
+);
 
 /**
  * @swagger
@@ -518,7 +767,7 @@ router.get('/dashboard/top-areas', auth(['ADMIN', 'MANAGER', 'BROKER']), getTopA
  *               type: string
  *               format: binary
  */
-router.get('/reports/export/excel', auth(['ADMIN', 'MANAGER']), exportExcel);
+router.get("/reports/export/excel", auth(["ADMIN", "MANAGER"]), exportExcel);
 
 /**
  * @swagger
@@ -545,7 +794,6 @@ router.get('/reports/export/excel', auth(['ADMIN', 'MANAGER']), exportExcel);
  *               type: string
  *               format: binary
  */
-router.get('/reports/export/pdf', auth(['ADMIN', 'MANAGER']), exportPDF);
+router.get("/reports/export/pdf", auth(["ADMIN", "MANAGER"]), exportPDF);
 
 module.exports = router;
-

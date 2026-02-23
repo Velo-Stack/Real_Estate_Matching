@@ -1,8 +1,14 @@
-const prisma = require('../utils/prisma');
-const bcrypt = require('bcryptjs');
+const prisma = require("../utils/prisma");
+const bcrypt = require("bcryptjs");
 
-const ASSIGNABLE_ROLES = ['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY'];
-const INTERNAL_ROLES = ['MANAGER', 'EMPLOYEE', 'DATA_ENTRY_ONLY'];
+const ASSIGNABLE_ROLES = [
+  "ADMIN",
+  "MANAGER",
+  "BROKER",
+  "EMPLOYEE",
+  "DATA_ENTRY_ONLY",
+];
+const INTERNAL_ROLES = ["MANAGER", "EMPLOYEE", "DATA_ENTRY_ONLY"];
 
 const createUser = async (req, res) => {
   try {
@@ -11,23 +17,27 @@ const createUser = async (req, res) => {
 
     // Validation
     if (!name || !email || !password) {
-      return res.status(400).json({ message: 'Name, email, and password are required' });
+      return res
+        .status(400)
+        .json({ message: "Name, email, and password are required" });
     }
 
-    if (currentUser.role !== 'ADMIN') {
-      return res.status(403).json({ message: 'Only Admin can create users' });
+    if (currentUser.role !== "ADMIN") {
+      return res.status(403).json({ message: "Only Admin can create users" });
     }
 
     // Role Enforcement
-    let newRole = 'BROKER'; // Default
+    let newRole = "BROKER"; // Default
     if (role) {
       if (!ASSIGNABLE_ROLES.includes(role)) {
-        return res.status(400).json({ message: 'Invalid role' });
+        return res.status(400).json({ message: "Invalid role" });
       }
       newRole = role;
     }
     if (INTERNAL_ROLES.includes(newRole) && !phone) {
-      return res.status(400).json({ message: 'Phone is required for internal users' });
+      return res
+        .status(400)
+        .json({ message: "Phone is required for internal users" });
     }
 
     // Hash Password
@@ -39,7 +49,7 @@ const createUser = async (req, res) => {
         email,
         phone: phone || null,
         password: hashedPassword,
-        role: newRole
+        role: newRole,
       },
       select: {
         id: true,
@@ -48,14 +58,14 @@ const createUser = async (req, res) => {
         phone: true,
         role: true,
         status: true,
-        createdAt: true
-      }
+        createdAt: true,
+      },
     });
 
     res.status(201).json(user);
   } catch (error) {
-    if (error.code === 'P2002') {
-      return res.status(400).json({ message: 'Email already exists' });
+    if (error.code === "P2002") {
+      return res.status(400).json({ message: "Email already exists" });
     }
     res.status(500).json({ error: error.message });
   }
@@ -64,8 +74,8 @@ const createUser = async (req, res) => {
 const getAllUsers = async (req, res) => {
   try {
     // Only Admin/Manager can list users
-    if (!['ADMIN', 'MANAGER'].includes(req.user.role)) {
-      return res.status(403).json({ message: 'Access denied' });
+    if (!["ADMIN", "MANAGER"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Access denied" });
     }
 
     const { role, status } = req.query;
@@ -82,8 +92,8 @@ const getAllUsers = async (req, res) => {
         phone: true,
         role: true,
         status: true,
-        createdAt: true
-      }
+        createdAt: true,
+      },
     });
     res.json(users);
   } catch (error) {
@@ -95,15 +105,26 @@ const getUserById = async (req, res) => {
   try {
     const { id } = req.params;
     // Non admin/manager users can only view themselves
-    if (!['ADMIN', 'MANAGER'].includes(req.user.role) && req.user.id !== parseInt(id)) {
-      return res.status(403).json({ message: 'Access denied' });
+    if (
+      !["ADMIN", "MANAGER"].includes(req.user.role) &&
+      req.user.id !== parseInt(id)
+    ) {
+      return res.status(403).json({ message: "Access denied" });
     }
 
     const user = await prisma.user.findUnique({
       where: { id: parseInt(id) },
-      select: { id: true, name: true, email: true, phone: true, role: true, status: true, createdAt: true }
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        status: true,
+        createdAt: true,
+      },
     });
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user) return res.status(404).json({ message: "User not found" });
     res.json(user);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -117,24 +138,26 @@ const updateUser = async (req, res) => {
     const currentUser = req.user;
 
     const user = await prisma.user.findUnique({ where: { id: parseInt(id) } });
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     // Permissions: Admin or owner
-    if (currentUser.role !== 'ADMIN' && currentUser.id !== parseInt(id)) {
-      return res.status(403).json({ message: 'Access denied' });
+    if (currentUser.role !== "ADMIN" && currentUser.id !== parseInt(id)) {
+      return res.status(403).json({ message: "Access denied" });
     }
 
     // Only Admin can change role
-    if (role && currentUser.role !== 'ADMIN') {
-      return res.status(403).json({ message: 'Only Admin can change role' });
+    if (role && currentUser.role !== "ADMIN") {
+      return res.status(403).json({ message: "Only Admin can change role" });
     }
     if (role && !ASSIGNABLE_ROLES.includes(role)) {
-      return res.status(400).json({ message: 'Invalid role' });
+      return res.status(400).json({ message: "Invalid role" });
     }
     const effectiveRole = role || user.role;
     const effectivePhone = phone !== undefined ? phone : user.phone;
     if (INTERNAL_ROLES.includes(effectiveRole) && !effectivePhone) {
-      return res.status(400).json({ message: 'Phone is required for internal users' });
+      return res
+        .status(400)
+        .json({ message: "Phone is required for internal users" });
     }
 
     // Store old data for audit
@@ -147,10 +170,23 @@ const updateUser = async (req, res) => {
     if (role) data.role = role;
     if (password) data.password = await bcrypt.hash(password, 10);
 
-    const updated = await prisma.user.update({ where: { id: parseInt(id) }, data, select: { id: true, name: true, email: true, phone: true, role: true, status: true, createdAt: true } });
+    const updated = await prisma.user.update({
+      where: { id: parseInt(id) },
+      data,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        status: true,
+        createdAt: true,
+      },
+    });
     res.json(updated);
   } catch (error) {
-    if (error.code === 'P2002') return res.status(400).json({ message: 'Email already exists' });
+    if (error.code === "P2002")
+      return res.status(400).json({ message: "Email already exists" });
     res.status(500).json({ error: error.message });
   }
 };
@@ -161,15 +197,27 @@ const patchUserStatus = async (req, res) => {
     const { status } = req.body;
     const currentUser = req.user;
 
-    if (currentUser.role !== 'ADMIN') return res.status(403).json({ message: 'Only Admin can change status' });
+    if (currentUser.role !== "ADMIN")
+      return res.status(403).json({ message: "Only Admin can change status" });
 
     const user = await prisma.user.findUnique({ where: { id: parseInt(id) } });
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     // Store old data for audit
     req.oldData = user;
 
-    const updated = await prisma.user.update({ where: { id: parseInt(id) }, data: { status }, select: { id: true, name: true, email: true, phone: true, role: true, status: true } });
+    const updated = await prisma.user.update({
+      where: { id: parseInt(id) },
+      data: { status },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        status: true,
+      },
+    });
     res.json(updated);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -179,20 +227,133 @@ const patchUserStatus = async (req, res) => {
 const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
-    if (req.user.role !== 'ADMIN') return res.status(403).json({ message: 'Only Admin can delete users' });
+    if (req.user.role !== "ADMIN")
+      return res.status(403).json({ message: "Only Admin can delete users" });
 
     const user = await prisma.user.findUnique({ where: { id: parseInt(id) } });
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     // Store old data for audit
     req.oldData = user;
 
     // Soft delete by marking status DELETED
-    await prisma.user.update({ where: { id: parseInt(id) }, data: { status: 'DELETED' } });
-    res.json({ message: 'User marked as deleted' });
+    await prisma.user.update({
+      where: { id: parseInt(id) },
+      data: { status: "DELETED" },
+    });
+    res.json({ message: "User marked as deleted" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-module.exports = { createUser, getAllUsers, getUserById, updateUser, patchUserStatus, deleteUser };
+const getUserPermissions = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Admins only
+    if (req.user.role !== "ADMIN") {
+      return res.status(403).json({ message: "Access denied. Admins only." });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(id) },
+      select: { role: true, permissions: true, useCustomPermissions: true },
+    });
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Fetch default role permissions as reference
+    const rolePerms = await prisma.rolePermission.findUnique({
+      where: { role: user.role },
+    });
+
+    res.json({
+      useCustomPermissions: user.useCustomPermissions,
+      customPermissions: user.permissions,
+      defaultRolePermissions: rolePerms ? rolePerms.permissions : [],
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const updateUserPermissions = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { permissions } = req.body;
+
+    if (req.user.role !== "ADMIN") {
+      return res.status(403).json({ message: "Access denied. Admins only." });
+    }
+
+    if (!Array.isArray(permissions)) {
+      return res
+        .status(400)
+        .json({ message: "permissions must be an array of strings" });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: parseInt(id) },
+      data: {
+        permissions,
+        useCustomPermissions: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        role: true,
+        permissions: true,
+        useCustomPermissions: true,
+      },
+    });
+
+    res.json({ message: "User specific permissions updated", user: updated });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const removeUserPermissions = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (req.user.role !== "ADMIN") {
+      return res.status(403).json({ message: "Access denied. Admins only." });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: parseInt(id) },
+      data: {
+        permissions: [],
+        useCustomPermissions: false,
+      },
+      select: {
+        id: true,
+        name: true,
+        role: true,
+        permissions: true,
+        useCustomPermissions: true,
+      },
+    });
+
+    res.json({
+      message: "User permissions reverted to role defaults",
+      user: updated,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = {
+  createUser,
+  getAllUsers,
+  getUserById,
+  updateUser,
+  patchUserStatus,
+  deleteUser,
+  getUserPermissions,
+  updateUserPermissions,
+  removeUserPermissions,
+};
