@@ -1,15 +1,55 @@
-const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
 // Reuse the application's Prisma instance (ensures same adapter/config)
 const prisma = require('../src/utils/prisma');
 
+const CITIES_WITH_NEIGHBORHOODS = {
+  'الرياض': [
+    'الدرعية', 'العليا', 'السليمانية', 'الملقا', 'الياسمين', 'النرجس', 'الصحافة', 'حطين', 'العقيق',
+    'الغدير', 'الوادي', 'الربيع', 'المروج', 'الرحمانية', 'المهدية', 'ظهرة لبن', 'طويق', 'الرمال',
+    'قرطبة', 'غرناطة', 'الخليج', 'الروضة', 'النسيم الشرقي', 'النسيم الغربي', 'الشفا', 'السويدي',
+    'البديعة', 'القيروان', 'العارض'
+  ],
+  'جدة': [
+    'الشاطئ', 'الزهراء', 'الروضة', 'السلامة', 'النعيم', 'البساتين', 'المرجان', 'المحمدية', 'النزهة',
+    'الفيصلية', 'الربوة', 'الصفا', 'المروة', 'العزيزية', 'الحمراء', 'الأندلس', 'البلد', 'الكورنيش',
+    'أبحر الشمالية', 'أبحر الجنوبية', 'السنابل', 'الجامعة', 'الحمدانية'
+  ],
+  'مكة المكرمة': [
+    'العزيزية', 'الزاهر', 'الشوقية', 'العوالي', 'ولي العهد', 'بطحاء قريش', 'الشرائع', 'النوارية',
+    'الرصيفة', 'الكعكية', 'التنعيم', 'جرول', 'المسفلة', 'أجياد', 'الحجون', 'المعابدة', 'الخالدية'
+  ],
+  'المنطقة الشرقية': [
+    'الشاطئ', 'المزروعية', 'الفيصلية', 'الحمراء', 'النور', 'الجلوية', 'الطبيشي', 'أحد', 'عبدالله فؤاد',
+    'بدر', 'العليا', 'العقربية', 'الثقبة', 'الراكة', 'الجسر', 'الخبر الشمالية', 'الخبر الجنوبية',
+    'الدوحة', 'القصور', 'القشلة', 'الحزام الذهبي', 'الحزام الأخضر'
+  ]
+};
+
+async function findOrCreateCity(name) {
+  let city = await prisma.city.findFirst({ where: { name } });
+  if (!city) city = await prisma.city.create({ data: { name } });
+  return city;
+}
+
+async function findOrCreateNeighborhood(cityId, name) {
+  let neighborhood = await prisma.neighborhood.findFirst({ where: { cityId, name } });
+  if (!neighborhood) neighborhood = await prisma.neighborhood.create({ data: { cityId, name } });
+  return neighborhood;
+}
+
+async function findOrCreateTeam(name, type) {
+  let team = await prisma.team.findFirst({ where: { name } });
+  if (!team) team = await prisma.team.create({ data: { name, type } });
+  return team;
+}
+
 async function main() {
   const hashedPassword = await bcrypt.hash('password123', 10);
 
   console.log('Prisma client keys:', Object.keys(prisma).slice(0, 40));
-  console.log('user available:', prisma.user && typeof prisma.user, 'user keys:', Object.keys(prisma.user).slice(0,20));
+  console.log('user available:', prisma.user && typeof prisma.user, 'user keys:', Object.keys(prisma.user).slice(0, 20));
   console.log('prisma.user.upsert type:', typeof prisma.user.upsert, 'isUndefined:', prisma.user.upsert === undefined);
 
   // Test read
@@ -19,29 +59,46 @@ async function main() {
   // Admin User (use find/create to avoid upsert runtime path)
   let admin = await prisma.user.findUnique({ where: { email: 'admin@example.com' } });
   if (!admin) {
-    admin = await prisma.user.create({ data: { email: 'admin@example.com', name: 'System Admin', password: hashedPassword, role: 'ADMIN', status: 'ACTIVE' } });
+    admin = await prisma.user.create({
+      data: {
+        email: 'admin@example.com',
+        name: 'System Admin',
+        password: hashedPassword,
+        role: 'ADMIN',
+        status: 'ACTIVE'
+      }
+    });
   }
 
   // Broker User
   let broker = await prisma.user.findUnique({ where: { email: 'broker@example.com' } });
   if (!broker) {
-    broker = await prisma.user.create({ data: { email: 'broker@example.com', name: 'Ahmed Broker', password: hashedPassword, role: 'BROKER', status: 'ACTIVE' } });
+    broker = await prisma.user.create({
+      data: {
+        email: 'broker@example.com',
+        name: 'Ahmed Broker',
+        password: hashedPassword,
+        role: 'BROKER',
+        status: 'ACTIVE'
+      }
+    });
   }
 
-  // Seed Cities & Neighborhoods
-  let riyadh = await prisma.city.findFirst({ where: { name: 'الرياض' } });
-  if (!riyadh) riyadh = await prisma.city.create({ data: { name: 'الرياض' } });
-  let jeddah = await prisma.city.findFirst({ where: { name: 'جدة' } });
-  if (!jeddah) jeddah = await prisma.city.create({ data: { name: 'جدة' } });
-  let mecca = await prisma.city.findFirst({ where: { name: 'مكة المكرمة' } });
-  if (!mecca) mecca = await prisma.city.create({ data: { name: 'مكة المكرمة' } });
-  let eastern = await prisma.city.findFirst({ where: { name: 'المنطقة الشرقية' } });
-  if (!eastern) eastern = await prisma.city.create({ data: { name: 'المنطقة الشرقية' } });
+  // Seed Cities & Neighborhoods (idempotent)
+  const cityMap = {};
+  for (const [cityName, neighborhoods] of Object.entries(CITIES_WITH_NEIGHBORHOODS)) {
+    const city = await findOrCreateCity(cityName);
+    cityMap[cityName] = city;
 
-  let deraiya = await prisma.neighborhood.findFirst({ where: { name: 'الدرعية' } });
-  if (!deraiya) deraiya = await prisma.neighborhood.create({ data: { name: 'الدرعية', cityId: riyadh.id } });
-  let alShatea = await prisma.neighborhood.findFirst({ where: { name: 'الشاطئ' } });
-  if (!alShatea) alShatea = await prisma.neighborhood.create({ data: { name: 'الشاطئ', cityId: jeddah.id } });
+    for (const neighborhoodName of neighborhoods) {
+      await findOrCreateNeighborhood(city.id, neighborhoodName);
+    }
+  }
+
+  const riyadh = cityMap['الرياض'];
+  const jeddah = cityMap['جدة'];
+  const deraiya = await findOrCreateNeighborhood(riyadh.id, 'الدرعية');
+  const alShatea = await findOrCreateNeighborhood(jeddah.id, 'الشاطئ');
 
   // Create sample Offers
   const offer1 = await prisma.offer.create({
@@ -128,23 +185,29 @@ async function main() {
 
   // Create a Manager user and assign to teams
   let manager = await prisma.user.findUnique({ where: { email: 'manager@example.com' } });
-  if (!manager) manager = await prisma.user.create({ data: { email: 'manager@example.com', name: 'Manager User', password: hashedPassword, role: 'MANAGER', status: 'ACTIVE' } });
+  if (!manager) {
+    manager = await prisma.user.create({
+      data: {
+        email: 'manager@example.com',
+        name: 'Manager User',
+        password: hashedPassword,
+        role: 'MANAGER',
+        status: 'ACTIVE'
+      }
+    });
+  }
 
   // Create default teams (find or create)
-  let landsTeam = await prisma.team.findFirst({ where: { name: 'فريق اراضي' } });
-  if (!landsTeam) landsTeam = await prisma.team.create({ data: { name: 'فريق اراضي', type: 'LANDS' } });
-  let propertiesTeam = await prisma.team.findFirst({ where: { name: 'فريق عقارات' } });
-  if (!propertiesTeam) propertiesTeam = await prisma.team.create({ data: { name: 'فريق عقارات', type: 'PROPERTIES' } });
-  let maintenanceTeam = await prisma.team.findFirst({ where: { name: 'فرق صيانه وتشغيل' } });
-  if (!maintenanceTeam) maintenanceTeam = await prisma.team.create({ data: { name: 'فرق صيانه وتشغيل', type: 'MAINTENANCE' } });
-  let rentalTeam = await prisma.team.findFirst({ where: { name: 'فرق تاجير' } });
-  if (!rentalTeam) rentalTeam = await prisma.team.create({ data: { name: 'فرق تاجير', type: 'RENTAL' } });
-  let assetTeam = await prisma.team.findFirst({ where: { name: 'فرق ادارة املاك' } });
-  if (!assetTeam) assetTeam = await prisma.team.create({ data: { name: 'فرق ادارة املاك', type: 'ASSET_MANAGEMENT' } });
+  const landsTeam = await findOrCreateTeam('فريق اراضي', 'LANDS');
+  const propertiesTeam = await findOrCreateTeam('فريق عقارات', 'PROPERTIES');
+  await findOrCreateTeam('فرق صيانه وتشغيل', 'MAINTENANCE');
+  await findOrCreateTeam('فرق تاجير', 'RENTAL');
+  await findOrCreateTeam('فرق ادارة املاك', 'ASSET_MANAGEMENT');
 
   // Add manager to teams as MANAGER (if not already member)
   const mgrInLands = await prisma.teamMember.findFirst({ where: { teamId: landsTeam.id, userId: manager.id } });
   if (!mgrInLands) await prisma.teamMember.create({ data: { teamId: landsTeam.id, userId: manager.id, role: 'MANAGER' } });
+
   const mgrInProperties = await prisma.teamMember.findFirst({ where: { teamId: propertiesTeam.id, userId: manager.id } });
   if (!mgrInProperties) await prisma.teamMember.create({ data: { teamId: propertiesTeam.id, userId: manager.id, role: 'MANAGER' } });
 
