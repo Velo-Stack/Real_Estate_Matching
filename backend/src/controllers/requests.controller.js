@@ -162,8 +162,13 @@ const deleteRequest = async (req, res) => {
   try {
     const { id } = req.params;
     const { role, id: userId } = req.user;
+    const requestId = parseInt(id, 10);
 
-    const request = await prisma.request.findUnique({ where: { id: parseInt(id) } });
+    if (Number.isNaN(requestId)) {
+      return res.status(400).json({ message: 'Invalid request id' });
+    }
+
+    const request = await prisma.request.findUnique({ where: { id: requestId } });
     if (!request) return res.status(404).json({ message: 'Request not found' });
 
     if (role === 'BROKER' && request.createdById !== userId) {
@@ -173,7 +178,11 @@ const deleteRequest = async (req, res) => {
     // Store old data for audit
     req.oldData = request;
 
-    await prisma.request.delete({ where: { id: parseInt(id) } });
+    await prisma.$transaction([
+      prisma.match.deleteMany({ where: { requestId } }),
+      prisma.request.delete({ where: { id: requestId } })
+    ]);
+
     res.json({ message: 'Request deleted' });
   } catch (error) {
     res.status(500).json({ error: error.message });

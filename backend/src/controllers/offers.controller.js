@@ -175,8 +175,13 @@ const deleteOffer = async (req, res) => {
   try {
     const { id } = req.params;
     const { role, id: userId } = req.user;
+    const offerId = parseInt(id, 10);
 
-    const offer = await prisma.offer.findUnique({ where: { id: parseInt(id) } });
+    if (Number.isNaN(offerId)) {
+      return res.status(400).json({ message: 'Invalid offer id' });
+    }
+
+    const offer = await prisma.offer.findUnique({ where: { id: offerId } });
     if (!offer) return res.status(404).json({ message: 'Offer not found' });
 
     if (role === 'BROKER' && offer.createdById !== userId) {
@@ -186,7 +191,11 @@ const deleteOffer = async (req, res) => {
     // Store old data for audit
     req.oldData = offer;
 
-    await prisma.offer.delete({ where: { id: parseInt(id) } });
+    await prisma.$transaction([
+      prisma.match.deleteMany({ where: { offerId } }),
+      prisma.offer.delete({ where: { id: offerId } })
+    ]);
+
     res.json({ message: 'Offer deleted' });
   } catch (error) {
     res.status(500).json({ error: error.message });
