@@ -70,7 +70,7 @@ const router = express.Router();
  *       200:
  *         description: List of offers
  */
-router.post('/offers', auth(['ADMIN', 'MANAGER', 'DATA_ENTRY_ONLY']), auditLog('Offer'), createOffer);
+router.post('/offers', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), auditLog('Offer'), createOffer);
 router.get('/offers', auth(['ADMIN', 'MANAGER', 'EMPLOYEE']), getOffers);
 
 /**
@@ -153,7 +153,7 @@ router.delete('/offers/:id', auth(['ADMIN', 'MANAGER']), auditLog('Offer'), dele
  *       200:
  *         description: List of requests
  */
-router.post('/requests', auth(['ADMIN', 'MANAGER', 'DATA_ENTRY_ONLY']), auditLog('Request'), createRequest);
+router.post('/requests', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), auditLog('Request'), createRequest);
 router.get('/requests', auth(['ADMIN', 'MANAGER', 'EMPLOYEE']), getRequests);
 
 /**
