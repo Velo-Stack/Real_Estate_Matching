@@ -71,7 +71,7 @@ const router = express.Router();
  *         description: List of offers
  */
 router.post('/offers', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), auditLog('Offer'), createOffer);
-router.get('/offers', auth(['ADMIN', 'MANAGER', 'EMPLOYEE']), getOffers);
+router.get('/offers', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE']), getOffers);
 
 /**
  * @swagger
@@ -154,7 +154,7 @@ router.delete('/offers/:id', auth(['ADMIN', 'MANAGER']), auditLog('Offer'), dele
  *         description: List of requests
  */
 router.post('/requests', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), auditLog('Request'), createRequest);
-router.get('/requests', auth(['ADMIN', 'MANAGER', 'EMPLOYEE']), getRequests);
+router.get('/requests', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE']), getRequests);
 
 /**
  * @swagger
@@ -433,9 +433,9 @@ router.get('/dashboard/summary', auth(['ADMIN', 'MANAGER', 'BROKER']), getSummar
 router.get('/dashboard/activity-gaps', auth(['ADMIN', 'MANAGER', 'BROKER']), getActivityGaps);
 
 // Meta & Locations
-router.get('/meta/enums', auth(['ADMIN', 'MANAGER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getEnums);
-router.get('/locations/cities', auth(['ADMIN', 'MANAGER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getCities);
-router.get('/locations/neighborhoods', auth(['ADMIN', 'MANAGER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getNeighborhoods);
+router.get('/meta/enums', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getEnums);
+router.get('/locations/cities', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getCities);
+router.get('/locations/neighborhoods', auth(['ADMIN', 'MANAGER', 'BROKER', 'EMPLOYEE', 'DATA_ENTRY_ONLY']), getNeighborhoods);
 
 // Teams & Internal Communication
 router.post('/teams', auth(['ADMIN', 'MANAGER']), auditLog('Team'), createTeam);
