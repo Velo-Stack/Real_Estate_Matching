@@ -124,7 +124,7 @@ const getOffers = async (req, res) => {
       where,
       orderBy: { createdAt: 'desc' },
       include: {
-        createdBy: { select: { id: true, name: true, role: true } },
+        createdBy: { select: { id: true, name: true, role: true, phone: true } },
         cityRel: { select: { id: true, name: true } },
         neighborhoodRel: { select: { id: true, name: true, cityId: true } },
         team: { select: { id: true, name: true } }

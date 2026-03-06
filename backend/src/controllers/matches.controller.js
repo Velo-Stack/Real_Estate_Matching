@@ -42,13 +42,13 @@ const getMatches = async (req, res) => {
       include: {
         offer: {
           include: {
-            createdBy: { select: { id: true, name: true, email: true } },
+            createdBy: { select: { id: true, name: true, email: true, phone: true } },
             team: { select: { id: true, name: true } }
           }
         },
         request: {
           include: {
-            createdBy: { select: { id: true, name: true, email: true } },
+            createdBy: { select: { id: true, name: true, email: true, phone: true } },
             team: { select: { id: true, name: true } }
           }
         }
